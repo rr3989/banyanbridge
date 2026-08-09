@@ -15,11 +15,16 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Configuration for serverless environment
+instance_path = os.environ.get('INSTANCE_PATH', '/tmp')
+app.instance_path = instance_path
+app.instance_relative_config = False
+
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///banyanbridge.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////tmp/banyanbridge.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
 # app.config['SERVER_NAME'] = 'banyanbridge.org'  # Commented out for localhost development
@@ -30,8 +35,13 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Ensure upload directory exists (only if not in read-only environment)
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except OSError:
+    # Read-only filesystem, use /tmp
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Database Models
 class User(UserMixin, db.Model):
