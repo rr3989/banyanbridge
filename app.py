@@ -16,7 +16,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
-app.config['SERVER_NAME'] = 'banyanbridge.org'
+# app.config['SERVER_NAME'] = 'banyanbridge.org'  # Commented out for localhost development
 
 # Initialize extensions
 db = SQLAlchemy(app)
