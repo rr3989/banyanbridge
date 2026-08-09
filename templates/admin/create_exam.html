@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Exam - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .sidebar-header img {
+            height: 60px;
+            margin-bottom: 10px;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sidebar-nav li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar-nav a {
+            display: block;
+            padding: 12px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px;
+            background-color: var(--bg-light);
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        
+        .form-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .question-card {
+            background-color: var(--bg-light);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .question-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background-color: #1e3a5f;
+        }
+        
+        .btn-back {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-back:hover {
+            background-color: #3a6347;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+                <h3>Admin Panel</h3>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('create_exam') }}" class="active">Create Exam</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="dashboard-header">
+                <h1>Create New Exam</h1>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-back">← Back to Dashboard</a>
+            </div>
+            
+            <div class="form-container">
+                <form method="POST" action="{{ url_for('create_exam') }}">
+                    <div class="form-section">
+                        <h3>Exam Details</h3>
+                        <div class="form-group">
+                            <label for="title">Exam Title</label>
+                            <input type="text" id="title" name="title" required placeholder="e.g., Mathematics Mid-Term Exam">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="subject">Subject</label>
+                            <input type="text" id="subject" name="subject" required placeholder="e.g., Mathematics">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" rows="3" placeholder="Brief description of the exam..."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="duration">Duration (minutes)</label>
+                            <input type="number" id="duration" name="duration" value="30" min="5" max="180" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Questions</h3>
+                        <div class="form-group">
+                            <label for="question_count">Number of Questions</label>
+                            <input type="number" id="question_count" name="question_count" value="5" min="1" max="20" required onchange="updateQuestions()">
+                        </div>
+                        
+                        <div id="questions-container">
+                            <!-- Questions will be dynamically generated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">Create Exam</button>
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn-back">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function updateQuestions() {
+            const count = document.getElementById('question_count').value;
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= count; i++) {
+                const questionHTML = `
+                    <div class="question-card">
+                        <h4>Question ${i}</h4>
+                        <div class="form-group">
+                            <label>Question Text</label>
+                            <input type="text" name="question_${i}" required placeholder="Enter your question here...">
+                        </div>
+                        <div class="options-grid">
+                            <div class="form-group">
+                                <label>Option A</label>
+                                <input type="text" name="option_${i}_a" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Option B</label>
+                                <input type="text" name="option_${i}_b" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Option C</label>
+                                <input type="text" name="option_${i}_c" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Option D</label>
+                                <input type="text" name="option_${i}_d" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Correct Answer</label>
+                            <select name="correct_${i}" required>
+                                <option value="">Select correct option</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += questionHTML;
+            }
+        }
+        
+        // Initialize with default number of questions
+        updateQuestions();
+    </script>
+</body>
+</html>

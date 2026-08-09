@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - Banyan Bridge Foundation</title>
+    <meta name="description" content="Get in touch with Banyan Bridge Foundation. Contact us for donations, volunteering, partnerships, or general inquiries.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" class="brand-link">
+                    <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Banyan Bridge Foundation Logo" class="logo">
+                    <span class="brand-text">Banyan Bridge</span>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
+                <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
+                <li><a href="{{ url_for('contact') }}" class="active">Contact</a></li>
+                <li><a href="{{ url_for('login') }}" class="btn-donate">Login</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header contact-header">
+        <div class="container">
+            <h1>Contact Us</h1>
+            <p>We'd love to hear from you. Get in touch with us today.</p>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="section">
+        <div class="container">
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h2>Get in Touch</h2>
+                    <p>Have questions about our programs, want to volunteer, or interested in partnering with us? Reach out to us using any of the methods below.</p>
+                    
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-icon">📍</div>
+                            <div class="contact-text">
+                                <h4>Address</h4>
+                                <p>Banyan Bridge Foundation<br>123 Education Lane<br>City, State - 123456</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">📧</div>
+                            <div class="contact-text">
+                                <h4>Email</h4>
+                                <p><a href="mailto:info@banyanbridge.org">info@banyanbridge.org</a></p>
+                                <p><a href="mailto:volunteer@banyanbridge.org">volunteer@banyanbridge.org</a></p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">📞</div>
+                            <div class="contact-text">
+                                <h4>Phone</h4>
+                                <p><a href="tel:+919876543210">+91 98765 43210</a></p>
+                                <p>Mon-Fri: 9:00 AM - 6:00 PM</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="social-links">
+                        <h4>Follow Us</h4>
+                        <div class="social-icons">
+                            <a href="#" class="social-icon">Facebook</a>
+                            <a href="#" class="social-icon">Twitter</a>
+                            <a href="#" class="social-icon">Instagram</a>
+                            <a href="#" class="social-icon">LinkedIn</a>
+                        </div>
+                    </div>
+                </div>
+
+                <form class="contact-form" id="contactForm">
+                    <h2>Send us a Message</h2>
+                    <div class="form-group">
+                        <label for="contact-name">Full Name *</label>
+                        <input type="text" id="contact-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-email">Email Address *</label>
+                        <input type="email" id="contact-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-phone">Phone Number</label>
+                        <input type="tel" id="contact-phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-subject">Subject *</label>
+                        <select id="contact-subject" name="subject" required>
+                            <option value="">Select a subject</option>
+                            <option value="general">General Inquiry</option>
+                            <option value="volunteer">Volunteer Opportunity</option>
+                            <option value="donation">Donation Question</option>
+                            <option value="partnership">Partnership Proposal</option>
+                            <option value="media">Media/Press</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-message">Message *</label>
+                        <textarea id="contact-message" name="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Volunteer Section -->
+    <section class="section bg-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Become a Volunteer</h2>
+                <p>Join our community of changemakers and make a real difference</p>
+            </div>
+            <div class="volunteer-content">
+                <div class="volunteer-info">
+                    <h3>Why Volunteer With Us?</h3>
+                    <ul class="volunteer-benefits">
+                        <li>Make a direct impact on children's education</li>
+                        <li>Develop new skills and gain valuable experience</li>
+                        <li>Connect with like-minded individuals</li>
+                        <li>Flexible opportunities to fit your schedule</li>
+                        <li>Be part of a transformative movement</li>
+                    </ul>
+                </div>
+                <div class="volunteer-opportunities">
+                    <h3>Volunteer Opportunities</h3>
+                    <div class="opportunity-list">
+                        <div class="opportunity-item">
+                            <h4>Teaching Assistant</h4>
+                            <p>Support our educational programs by assisting with classroom activities and tutoring.</p>
+                        </div>
+                        <div class="opportunity-item">
+                            <h4>Program Coordinator</h4>
+                            <p>Help organize and manage our various educational initiatives and events.</p>
+                        </div>
+                        <div class="opportunity-item">
+                            <h4>Skills Trainer</h4>
+                            <p>Share your professional skills through workshops and training sessions.</p>
+                        </div>
+                        <div class="opportunity-item">
+                            <h4>Outreach Ambassador</h4>
+                            <p>Represent our foundation at community events and help spread awareness.</p>
+                        </div>
+                    </div>
+                    <a href="#contactForm" class="btn btn-secondary">Apply to Volunteer</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Partnership Section -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Partner With Us</h2>
+                <p>Create meaningful impact through strategic partnerships</p>
+            </div>
+            <div class="partnership-grid">
+                <div class="partnership-card">
+                    <h3>Corporate Partnerships</h3>
+                    <p>Align your CSR initiatives with our educational programs to create sustainable social impact while meeting your corporate responsibility goals.</p>
+                    <a href="#contactForm" class="btn-link">Explore Partnership →</a>
+                </div>
+                <div class="partnership-card">
+                    <h3>Institutional Collaboration</h3>
+                    <p>Partner with us as educational institutions, research organizations, or foundations to combine resources and expertise for greater impact.</p>
+                    <a href="#contactForm" class="btn-link">Discuss Collaboration →</a>
+                </div>
+                <div class="partnership-card">
+                    <h3>Community Alliances</h3>
+                    <p>Work with us as community organizations, local groups, or government bodies to extend our reach and effectiveness at the grassroots level.</p>
+                    <a href="#contactForm" class="btn-link">Form Alliance →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="section bg-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Frequently Asked Questions</h2>
+                <p>Find answers to common questions about our foundation</p>
+            </div>
+            <div class="faq-content">
+                <div class="faq-item">
+                    <h3>How can I donate to Banyan Bridge Foundation?</h3>
+                    <p>You can donate through our website using various payment methods, including UPI, bank transfer, or credit/debit cards. All donations are tax-exempt under 80G.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What volunteer opportunities are available?</h3>
+                    <p>We offer various volunteer roles including teaching assistants, program coordinators, skills trainers, and outreach ambassadors. Opportunities are flexible and can be tailored to your skills and availability.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How are donations utilized?</h3>
+                    <p>Donations are used to support our educational programs, including learning materials, teacher training, infrastructure development, and operational costs. We maintain complete transparency in our financial reporting.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Can I visit your learning centers?</h3>
+                    <p>Yes, we welcome visitors to our learning centers. Please contact us in advance to schedule a visit and learn more about our programs firsthand.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Make a Difference?</h2>
+                <p>Whether you want to donate, volunteer, or partner with us, your support can help transform education for children in need. Reach out today!</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('donate') }}" class="btn btn-primary btn-large">Donate Now</a>
+                    <a href="#contactForm" class="btn btn-secondary btn-large">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <img src="assets/images/Banyan-Bridge-final.png" alt="Banyan Bridge Foundation" class="footer-logo">
+                    <p>Transforming education and empowering communities through innovative learning programs.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Home</a></li>
+                        <li><a href="{{ url_for('about') }}">About Us</a></li>
+                        <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
+                        <li><a href="{{ url_for('index') }}#impact">Our Impact</a></li>
+                        <li><a href="{{ url_for('contact') }}">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Get Involved</h4>
+                    <ul>
+                        <li><a href="{{ url_for('donate') }}">Donate</a></li>
+                        <li><a href="{{ url_for('contact') }}">Volunteer</a></li>
+                        <li><a href="{{ url_for('contact') }}">Partner with Us</a></li>
+                        <li><a href="{{ url_for('index') }}#programs">Our Programs</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact Us</h4>
+                    <ul>
+                        <li><a href="mailto:info@banyanbridge.org">info@banyanbridge.org</a></li>
+                        <li><a href="tel:+919876543210">+91 98765 43210</a></li>
+                        <li><a href="{{ url_for('contact') }}">Send us a message</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Banyan Bridge Foundation. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

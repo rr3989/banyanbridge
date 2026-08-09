@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Exam - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .exam-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .exam-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .exam-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .exam-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+        
+        .question-card {
+            background-color: var(--bg-light);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .question-number {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+        
+        .question-text {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .options-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .option-item {
+            margin-bottom: 12px;
+        }
+        
+        .option-label {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: white;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .option-label:hover {
+            border-color: var(--primary-color);
+            background-color: #f8f9fa;
+        }
+        
+        .option-label input[type="radio"] {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary-color);
+        }
+        
+        .option-label input[type="radio"]:checked + span {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .option-label.selected {
+            border-color: var(--primary-color);
+            background-color: #e8f4f8;
+        }
+        
+        .exam-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background-color: #1e3a5f;
+        }
+        
+        .btn-back {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        
+        .btn-back:hover {
+            background-color: #3a6347;
+        }
+        
+        .timer-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="exam-container">
+            <div class="exam-header">
+                <h1>{{ exam.title }}</h1>
+                <div class="exam-info">
+                    <span><strong>Subject:</strong> {{ exam.subject }}</span>
+                    <span><strong>Questions:</strong> {{ exam.questions|length }}</span>
+                    <span><strong>Duration:</strong> {{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+            
+            {% if exam.description %}
+            <div style="background-color: var(--bg-light); padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                <strong>Instructions:</strong> {{ exam.description }}
+            </div>
+            {% endif %}
+            
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            
+            <form method="POST" action="{{ url_for('take_exam', exam_id=exam.id) }}">
+                {% for question in exam.questions %}
+                <div class="question-card">
+                    <div class="question-number">Question {{ loop.index }}</div>
+                    <div class="question-text">{{ question.question_text }}</div>
+                    
+                    <ul class="options-list">
+                        <li class="option-item">
+                            <label class="option-label">
+                                <input type="radio" name="question_{{ question.id }}" value="A" required onchange="updateProgress()">
+                                <span>A. {{ question.option_a }}</span>
+                            </label>
+                        </li>
+                        <li class="option-item">
+                            <label class="option-label">
+                                <input type="radio" name="question_{{ question.id }}" value="B" onchange="updateProgress()">
+                                <span>B. {{ question.option_b }}</span>
+                            </label>
+                        </li>
+                        <li class="option-item">
+                            <label class="option-label">
+                                <input type="radio" name="question_{{ question.id }}" value="C" onchange="updateProgress()">
+                                <span>C. {{ question.option_c }}</span>
+                            </label>
+                        </li>
+                        <li class="option-item">
+                            <label class="option-label">
+                                <input type="radio" name="question_{{ question.id }}" value="D" onchange="updateProgress()">
+                                <span>D. {{ question.option_d }}</span>
+                            </label>
+                        </li>
+                    </ul>
+                </div>
+                {% endfor %}
+                
+                <div class="exam-footer">
+                    <a href="{{ url_for('student_dashboard') }}" class="btn-back">Cancel</a>
+                    <button type="submit" class="btn-submit" onclick="return confirm('Are you sure you want to submit your exam? You cannot change your answers after submission.')">Submit Exam</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function updateProgress() {
+            const totalQuestions = {{ exam.questions|length }};
+            const answeredQuestions = document.querySelectorAll('input[type="radio"]:checked').length;
+            const progress = (answeredQuestions / totalQuestions) * 100;
+            document.querySelector('.progress-fill').style.width = progress + '%';
+        }
+        
+        // Add visual feedback for selected options
+        document.querySelectorAll('.option-label').forEach(label => {
+            label.addEventListener('click', function() {
+                const questionName = this.querySelector('input').name;
+                document.querySelectorAll(`input[name="${questionName}"]`).forEach(radio => {
+                    radio.closest('.option-label').classList.remove('selected');
+                });
+                this.classList.add('selected');
+            });
+        });
+    </script>
+</body>
+</html>

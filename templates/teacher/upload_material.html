@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Material - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .sidebar-header img {
+            height: 60px;
+            margin-bottom: 10px;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sidebar-nav li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar-nav a {
+            display: block;
+            padding: 12px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px;
+            background-color: var(--bg-light);
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            max-width: 800px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+        
+        .form-group input[type="file"] {
+            padding: 10px;
+        }
+        
+        .file-upload-info {
+            background-color: var(--bg-light);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .btn-submit {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background-color: #3a6347;
+        }
+        
+        .btn-back {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-back:hover {
+            background-color: #1e3a5f;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+                <h3>Teacher Panel</h3>
+            </div>
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('upload_material') }}" class="active">Upload Material</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="dashboard-header">
+                <h1>Upload Teaching Material</h1>
+                <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-back">← Back to Dashboard</a>
+            </div>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+            
+            <div class="form-container">
+                <div class="file-upload-info">
+                    <strong>Upload Guidelines:</strong>
+                    <ul>
+                        <li>Only PDF files are allowed</li>
+                        <li>Maximum file size: 16MB</li>
+                        <li>Ensure your file is properly named</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" action="{{ url_for('upload_material') }}" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="title">Material Title</label>
+                        <input type="text" id="title" name="title" required placeholder="e.g., Chapter 1 - Introduction to Algebra">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input type="text" id="subject" name="subject" required placeholder="e.g., Mathematics">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Brief description of the teaching material..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="file">PDF File</label>
+                        <input type="file" id="file" name="file" accept=".pdf" required>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">Upload Material</button>
+                        <a href="{{ url_for('teacher_dashboard') }}" class="btn-back">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

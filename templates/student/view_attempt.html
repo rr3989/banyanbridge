@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Results - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .results-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .results-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .results-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .score-display {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .score-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .score-text {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .percentage {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .questions-review {
+            margin-top: 30px;
+        }
+        
+        .questions-review h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        .review-item {
+            background-color: var(--bg-light);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ccc;
+        }
+        
+        .review-item.correct {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+        
+        .review-item.incorrect {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        
+        .review-question {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+        
+        .review-answer {
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+        
+        .review-answer.correct {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .review-answer.incorrect {
+            color: #dc3545;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-badge.correct {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .status-badge.incorrect {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-back {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        
+        .btn-back:hover {
+            background-color: #1e3a5f;
+        }
+        
+        .exam-details {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="results-container">
+            <div class="results-header">
+                <h1>Exam Results</h1>
+                <div class="exam-details">
+                    <span><strong>Exam:</strong> {{ attempt.exam.title }}</span>
+                    <span><strong>Subject:</strong> {{ attempt.exam.subject }}</span>
+                    <span><strong>Date:</strong> {{ attempt.attempted_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+            </div>
+            
+            <div class="score-display">
+                <div class="score-number">{{ attempt.score }}/{{ attempt.total_questions }}</div>
+                <div class="score-text">Correct Answers</div>
+                <div class="percentage">
+                    {% set percentage = (attempt.score / attempt.total_questions * 100) if attempt.total_questions > 0 else 0 %}
+                    {{ "%.1f"|format(percentage) }}%
+                </div>
+            </div>
+            
+            <div class="questions-review">
+                <h2>Question Review</h2>
+                
+                {% for answer in attempt.answers %}
+                <div class="review-item {% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
+                    <div class="review-question">
+                        {{ loop.index }}. {{ answer.question.question_text }}
+                        <span class="status-badge {% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
+                            {% if answer.is_correct %}Correct{% else %}Incorrect{% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="review-answer {% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
+                        <strong>Your Answer:</strong> 
+                        {% if answer.selected_answer %}
+                            {{ answer.selected_answer }}. 
+                            {% if answer.selected_answer == 'A' %}{{ answer.question.option_a }}
+                            {% elif answer.selected_answer == 'B' %}{{ answer.question.option_b }}
+                            {% elif answer.selected_answer == 'C' %}{{ answer.question.option_c }}
+                            {% elif answer.selected_answer == 'D' %}{{ answer.question.option_d }}
+                            {% endif %}
+                        {% else %}
+                            Not answered
+                        {% endif %}
+                    </div>
+                    
+                    {% if not answer.is_correct %}
+                    <div class="review-answer correct">
+                        <strong>Correct Answer:</strong> 
+                        {{ answer.question.correct_answer }}. 
+                        {% if answer.question.correct_answer == 'A' %}{{ answer.question.option_a }}
+                        {% elif answer.question.correct_answer == 'B' %}{{ answer.question.option_b }}
+                        {% elif answer.question.correct_answer == 'C' %}{{ answer.question.option_c }}
+                        {% elif answer.question.correct_answer == 'D' %}{{ answer.question.option_d }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{ url_for('student_dashboard') }}" class="btn-back">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

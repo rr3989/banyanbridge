@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Banyan Bridge Foundation</title>
+    <meta name="description" content="Create your Banyan Bridge Foundation account">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 20px;
+        }
+        
+        .auth-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .auth-header img {
+            height: 80px;
+            margin-bottom: 20px;
+        }
+        
+        .auth-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .auth-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .btn-auth {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-auth:hover {
+            background-color: #1e3a5f;
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .auth-footer a {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .flash-message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .role-info {
+            background-color: var(--bg-light);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .role-info h4 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .role-info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .role-info li {
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .role-info li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Banyan Bridge Foundation Logo">
+                <h1>Create Account</h1>
+                <p>Join our educational community</p>
+            </div>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+            
+            <div class="role-info">
+                <h4>Choose your role:</h4>
+                <ul>
+                    <li><strong>Teacher:</strong> Upload teaching materials and manage courses</li>
+                    <li><strong>Student:</strong> Access materials, submit assignments, take exams</li>
+                    <li><strong>Admin:</strong> Manage users, create exams, oversee platform</li>
+                </ul>
+            </div>
+            
+            <form method="POST" action="{{ url_for('register') }}">
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name" name="full_name" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select your role</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-auth">Create Account</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+                <p style="margin-top: 10px;"><a href="{{ url_for('index') }}">← Back to Home</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
