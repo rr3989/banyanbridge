@@ -168,14 +168,24 @@ if (contactForm) {
             return;
         }
         
-        // Simulate form submission
-        alert('Thank you for your message! We will get back to you soon.');
-        
-        // In a real implementation, you would send this data to your server
-        console.log('Contact form submitted:', data);
-        
-        // Reset form
-        this.reset();
+        // Submit form to server
+        fetch('/contact', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert(result.message);
+                this.reset();
+            } else {
+                alert('Error: ' + (result.error || 'Failed to send message'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while sending your message. Please try again.');
+        });
     });
 }
 

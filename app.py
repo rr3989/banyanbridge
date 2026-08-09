@@ -8,6 +8,9 @@ import os
 import secrets
 import logging
 import traceback
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +31,14 @@ app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
 # app.config['SERVER_NAME'] = 'banyanbridge.org'  # Commented out for localhost development
+
+# Email configuration
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'banyanbridgeteam@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'banyanbridgeteam@gmail.com')
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -113,12 +124,88 @@ class ExamAnswer(db.Model):
     selected_answer = db.Column(db.String(1))
     is_correct = db.Column(db.Boolean, default=False)
 
+class ContactMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20))
+    subject = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def send_contact_email(name, email, phone, subject, message):
+    """Send contact form submission email to admin"""
+    try:
+        logger.info(f"Attempting to send email for {name}")
+        
+        # Check if email configuration is available
+        if not app.config['MAIL_PASSWORD']:
+            logger.warning("Email password not configured - skipping email sending")
+            return False
+        
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"New Contact Form Submission: {subject}"
+        msg['From'] = app.config['MAIL_DEFAULT_SENDER']
+        msg['To'] = 'banyanbridgeteam@gmail.com'
+        
+        # Create email body
+        text_content = f"""
+New Contact Form Submission
+
+Name: {name}
+Email: {email}
+Phone: {phone if phone else 'Not provided'}
+Subject: {subject}
+
+Message:
+{message}
+
+Submitted at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+"""
+        
+        html_content = f"""
+<html>
+<body>
+    <h2>New Contact Form Submission</h2>
+    <p><strong>Name:</strong> {name}</p>
+    <p><strong>Email:</strong> {email}</p>
+    <p><strong>Phone:</strong> {phone if phone else 'Not provided'}</p>
+    <p><strong>Subject:</strong> {subject}</p>
+    <h3>Message:</h3>
+    <p>{message}</p>
+    <p><em>Submitted at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</em></p>
+</body>
+</html>
+"""
+        
+        # Attach both plain text and HTML versions
+        part1 = MIMEText(text_content, 'plain')
+        part2 = MIMEText(html_content, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        # Send email
+        with smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT']) as server:
+            if app.config['MAIL_USE_TLS']:
+                server.starttls()
+            if app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']:
+                server.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+            server.send_message(msg)
+            
+        logger.info(f"Contact email sent successfully for {name}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send contact email: {e}")
+        logger.error(traceback.format_exc())
+        return False
 
 # Favicon route to prevent 500 errors
 @app.route('/favicon.ico')
@@ -161,8 +248,55 @@ def index():
 def about():
     return render_template('about.html')
 
-@app.route('/contact')
+@app.route('/contact', methods=['GET', 'POST'])
 def contact():
+    if request.method == 'POST':
+        try:
+            logger.info("Contact form submission received")
+            logger.info(f"Form data: {dict(request.form)}")
+            
+            # Get form data
+            name = request.form.get('name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            subject = request.form.get('subject')
+            message = request.form.get('message')
+            
+            logger.info(f"Extracted data - Name: {name}, Email: {email}, Subject: {subject}")
+            
+            # Validate required fields
+            if not name or not email or not subject or not message:
+                logger.warning("Validation failed - missing required fields")
+                return {'success': False, 'error': 'All required fields must be filled'}, 400
+            
+            # Create contact message record
+            logger.info("Creating ContactMessage record")
+            contact_message = ContactMessage(
+                name=name,
+                email=email,
+                phone=phone,
+                subject=subject,
+                message=message
+            )
+            db.session.add(contact_message)
+            logger.info("Added to session, committing...")
+            db.session.commit()
+            logger.info(f"Successfully saved contact message with ID: {contact_message.id}")
+            
+            # Send email notification
+            email_sent = send_contact_email(name, email, phone, subject, message)
+            
+            if email_sent:
+                return {'success': True, 'message': 'Thank you for your message! We will get back to you soon.'}
+            else:
+                # Email failed but message was saved
+                return {'success': True, 'message': 'Thank you for your message! We will get back to you soon.'}
+                
+        except Exception as e:
+            logger.error(f"Error processing contact form: {e}")
+            logger.error(traceback.format_exc())
+            return {'success': False, 'error': 'An error occurred while processing your message'}, 500
+    
     return render_template('contact.html')
 
 @app.route('/donate')
@@ -246,7 +380,8 @@ def admin_dashboard():
     
     exams = Exam.query.all()
     users = User.query.all()
-    return render_template('admin/dashboard.html', exams=exams, users=users)
+    contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    return render_template('admin/dashboard.html', exams=exams, users=users, contact_messages=contact_messages)
 
 @app.route('/admin/exam/create', methods=['GET', 'POST'])
 @login_required

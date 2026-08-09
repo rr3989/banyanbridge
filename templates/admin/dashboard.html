@@ -238,6 +238,7 @@
             <ul class="sidebar-nav">
                 <li><a href="{{ url_for('admin_dashboard') }}" class="active">Dashboard</a></li>
                 <li><a href="{{ url_for('create_exam') }}">Create Exam</a></li>
+                <li><a href="#contact-messages">Contact Messages</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             </ul>
         </div>
@@ -277,6 +278,10 @@
                 <div class="stat-card">
                     <h3>Students</h3>
                     <div class="number">{{ users|selectattr('role', 'equalto', 'student')|list|length }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Contact Messages</h3>
+                    <div class="number">{{ contact_messages|length }}</div>
                 </div>
             </div>
             
@@ -348,6 +353,41 @@
                 </table>
                 {% else %}
                 <p style="text-align: center; color: var(--text-light); padding: 20px;">No users registered yet.</p>
+                {% endif %}
+            </div>
+            
+            <div class="content-section" id="contact-messages">
+                <div class="section-header">
+                    <h2>Contact Messages</h2>
+                </div>
+                
+                {% if contact_messages %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Subject</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for message in contact_messages %}
+                        <tr>
+                            <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ message.name }}</td>
+                            <td>{{ message.email }}</td>
+                            <td>{{ message.phone if message.phone else '-' }}</td>
+                            <td>{{ message.subject }}</td>
+                            <td><div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ message.message }}</div></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="text-align: center; color: var(--text-light); padding: 20px;">No contact messages received yet.</p>
                 {% endif %}
             </div>
         </div>
