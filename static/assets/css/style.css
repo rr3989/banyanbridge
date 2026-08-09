@@ -182,7 +182,7 @@ img {
 .brand-mission {
     font-family: 'Roboto', sans-serif;
     font-size: 0.75rem;
-    color: var(--text-light);
+    color: var(--primary-color);
     font-weight: 300;
     line-height: 1.2;
     margin-top: 2px;
