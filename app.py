@@ -104,6 +104,11 @@ def load_user(user_id):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+# Favicon route to prevent 500 errors
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204  # Return 204 No Content
+
 # Routes
 @app.route('/')
 def index():
