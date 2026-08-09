@@ -523,3 +523,6 @@ if os.environ.get('INIT_DB') == 'true':
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+else:
+    # For production/deployment environments
+    init_db()
