@@ -10,8 +10,8 @@ import secrets
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = secrets.token_hex(16)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banyanbridge.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///banyanbridge.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -108,6 +108,19 @@ def allowed_file(filename):
 @app.route('/favicon.ico')
 def favicon():
     return '', 204  # Return 204 No Content
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('index.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('index.html'), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return render_template('index.html'), 500
 
 # Routes
 @app.route('/')
@@ -463,21 +476,26 @@ def view_attempt(attempt_id):
     return render_template('student/view_attempt.html', attempt=attempt)
 
 # Initialize database
-with app.app_context():
-    db.create_all()
-    
-    # Create default admin user if not exists
-    if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            email='admin@banyanbridge.org',
-            password_hash=generate_password_hash('admin123'),
-            full_name='Administrator',
-            role='admin'
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print("Default admin user created: username=admin, password=admin123")
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            
+            # Create default admin user if not exists
+            if not User.query.filter_by(username='admin').first():
+                admin = User(
+                    username='admin',
+                    email='admin@banyanbridge.org',
+                    password_hash=generate_password_hash('admin123'),
+                    full_name='Administrator',
+                    role='admin'
+                )
+                db.session.add(admin)
+                db.session.commit()
+                print("Default admin user created: username=admin, password=admin123")
+        except Exception as e:
+            print(f"Database initialization error: {e}")
 
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True)
