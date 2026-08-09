@@ -6,6 +6,12 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 import secrets
+import logging
+import traceback
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -112,20 +118,34 @@ def favicon():
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
+    logger.error(f"404 error: {error}")
     return render_template('index.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    logger.error(f"500 error: {error}")
+    logger.error(traceback.format_exc())
     return render_template('index.html'), 500
 
 @app.errorhandler(Exception)
 def handle_exception(e):
+    logger.error(f"Unhandled exception: {e}")
+    logger.error(traceback.format_exc())
     return render_template('index.html'), 500
 
 # Routes
+@app.route('/health')
+def health():
+    return 'OK', 200
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        logger.error(f"Error rendering index.html: {e}")
+        logger.error(traceback.format_exc())
+        return f"Error loading page: {str(e)}", 500
 
 @app.route('/about')
 def about():
@@ -475,7 +495,7 @@ def view_attempt(attempt_id):
     
     return render_template('student/view_attempt.html', attempt=attempt)
 
-# Initialize database
+# Initialize database (only in development or when explicitly called)
 def init_db():
     with app.app_context():
         try:
@@ -495,6 +515,10 @@ def init_db():
                 print("Default admin user created: username=admin, password=admin123")
         except Exception as e:
             print(f"Database initialization error: {e}")
+
+# Initialize database for production if needed
+if os.environ.get('INIT_DB') == 'true':
+    init_db()
 
 if __name__ == '__main__':
     init_db()
