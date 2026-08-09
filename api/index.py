@@ -1,3 +1,4 @@
-from app import app as application
-# Vercel requires the WSGI app to be named 'application'
-app = application
+from app import app
+
+# Export the Flask app for Vercel
+application = app
