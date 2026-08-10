@@ -234,7 +234,9 @@
             </form>
             
             <div class="auth-footer">
+                {% if enable_login_button %}
                 <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+                {% endif %}
                 <p style="margin-top: 10px;"><a href="{{ url_for('index') }}">← Back to Home</a></p>
             </div>
         </div>

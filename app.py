@@ -16,29 +16,53 @@ from email.mime.multipart import MIMEMultipart
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def load_config_from_properties():
+    """Load configuration from application.properties file"""
+    config = {}
+    properties_file = 'application.properties'
+    
+    if os.path.exists(properties_file):
+        with open(properties_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip()
+    
+    return config
+
 app = Flask(__name__)
 
 # Configuration for serverless environment
-instance_path = os.environ.get('INSTANCE_PATH', '/tmp')
+instance_path = os.environ.get('INSTANCE_PATH', './instance')
 app.instance_path = instance_path
 app.instance_relative_config = False
 
+# Load configuration from properties file first, then environment variables
+properties_config = load_config_from_properties()
+
 # Configuration
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////tmp/banyanbridge.db')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', properties_config.get('SECRET_KEY', 'dev-secret-key-change-in-production'))
+app.config['ENABLE_LOGIN_BUTTON'] = os.environ.get('ENABLE_LOGIN_BUTTON', properties_config.get('ENABLE_LOGIN_BUTTON', 'false')).lower() in ['true', 'on', '1']
+
+# Database configuration - Neon PostgreSQL only
+database_url = os.environ.get('neon_banyanbridge_db_DATABASE_URL') or \
+              os.environ.get('DATABASE_URL') or \
+              properties_config.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', properties_config.get('UPLOAD_FOLDER', '/tmp/uploads'))
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', properties_config.get('MAX_CONTENT_LENGTH', str(16 * 1024 * 1024))))
+app.config['ALLOWED_EXTENSIONS'] = set(ext.strip() for ext in properties_config.get('ALLOWED_EXTENSIONS', 'pdf').split(','))
 # app.config['SERVER_NAME'] = 'banyanbridge.org'  # Commented out for localhost development
 
 # Email configuration
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ['true', 'on', '1']
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'banyanbridgeteam@gmail.com')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'banyanbridgeteam@gmail.com')
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', properties_config.get('MAIL_SERVER', 'smtp.gmail.com'))
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', properties_config.get('MAIL_PORT', '587')))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', properties_config.get('MAIL_USE_TLS', 'True')).lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', properties_config.get('MAIL_USERNAME', 'banyanbridgeteam@gmail.com'))
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', properties_config.get('MAIL_PASSWORD', ''))
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', properties_config.get('MAIL_DEFAULT_SENDER', 'banyanbridgeteam@gmail.com'))
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -54,12 +78,17 @@ except OSError:
     app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Context processor to make configuration available to all templates
+@app.context_processor
+def inject_config():
+    return dict(enable_login_button=app.config['ENABLE_LOGIN_BUTTON'])
+
 # Database Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)  # Increased from 120 to 255 for scrypt hashes
     role = db.Column(db.String(20), nullable=False)  # 'admin', 'teacher', 'student'
     full_name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -337,6 +366,17 @@ def register():
         full_name = request.form.get('full_name')
         role = request.form.get('role')
         
+        # Restrict registration to usernames containing 'banyanbridgeteam'
+        if 'banyanbridgeteam' not in username.lower() and 'admin' in role.lower():
+            flash('Restricted Only For Admin Users', 'error')
+            return redirect(url_for('register'))
+
+        # Restrict registration to Admin usernames containing 'banyanbridgeteam'
+        if 'teacher' not in username.lower() and 'teacher' in role.lower():
+            flash('Restricted Only For Teachers', 'error')
+            return redirect(url_for('register'))
+
+
         # Check if user already exists
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'error')
