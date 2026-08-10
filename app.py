@@ -43,6 +43,7 @@ properties_config = load_config_from_properties()
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', properties_config.get('SECRET_KEY', 'dev-secret-key-change-in-production'))
+app.config['ENABLE_LOGIN_BUTTON'] = os.environ.get('ENABLE_LOGIN_BUTTON', properties_config.get('ENABLE_LOGIN_BUTTON', 'false')).lower() in ['true', 'on', '1']
 
 # Database configuration - Neon PostgreSQL only
 database_url = os.environ.get('neon_banyanbridge_db_DATABASE_URL') or \
@@ -76,6 +77,11 @@ except OSError:
     # Read-only filesystem, use /tmp
     app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Context processor to make configuration available to all templates
+@app.context_processor
+def inject_config():
+    return dict(enable_login_button=app.config['ENABLE_LOGIN_BUTTON'])
 
 # Database Models
 class User(UserMixin, db.Model):
