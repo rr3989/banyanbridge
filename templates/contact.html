@@ -29,7 +29,9 @@
                 <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
                 <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
                 <li><a href="{{ url_for('contact') }}" class="active">Contact</a></li>
+                {% if enable_login_button %}
                 <li><a href="{{ url_for('login') }}" class="btn-donate">Login</a></li>
+                {% endif %}
             </ul>
             <div class="hamburger">
                 <span></span>

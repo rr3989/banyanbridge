@@ -58,3 +58,5 @@ uploads/*
 
 # Flask session
 flask_session/
+.vercel
+.env*
