@@ -1,0 +1,29 @@
+<!-- Navigation -->
+<nav class="navbar">
+    <div class="container">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}" class="brand-link">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Banyan Bridge Foundation Logo" class="logo">
+                <div class="brand-text-container">
+                    <span class="brand-text"><em>Banyan Bridge</em></span>
+                    <span class="brand-mission"><em>Transforming education and empowering communities</em></span>
+                </div>
+            </a>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Home</a></li>
+            <li><a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a></li>
+            <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
+            <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
+            <li><a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact</a></li>
+            {% if enable_login_button %}
+            <li><a href="{{ url_for('login') }}" class="btn-donate {% if request.endpoint == 'login' or request.endpoint == 'register' %}active{% endif %}">Login</a></li>
+            {% endif %}
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</nav>

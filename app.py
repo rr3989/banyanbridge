@@ -11,6 +11,10 @@ import traceback
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local
+load_dotenv('.env.local')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

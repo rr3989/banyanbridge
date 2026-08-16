@@ -11,35 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <a href="{{ url_for('index') }}" class="brand-link">
-                    <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Banyan Bridge Foundation Logo" class="logo">
-                    <div class="brand-text-container">
-                        <span class="brand-text"><em>Banyan Bridge</em></span>
-                        <span class="brand-mission"><em>Transforming education and empowering communities</em></span>
-                    </div>
-                </a>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="{{ url_for('index') }}">Home</a></li>
-                <li><a href="{{ url_for('about') }}">About</a></li>
-                <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
-                <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
-                <li><a href="{{ url_for('contact') }}" class="active">Contact</a></li>
-                {% if enable_login_button %}
-                <li><a href="{{ url_for('login') }}" class="btn-donate">Login</a></li>
-                {% endif %}
-            </ul>
-            <div class="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </nav>
+{% include 'header.html' %}
 
     <!-- Page Header -->
     <section class="page-header contact-header">
@@ -233,47 +205,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <img src="assets/images/Banyan-Bridge-final.png" alt="Banyan Bridge Foundation" class="footer-logo">
-                    <p>Transforming education and empowering communities through innovative learning programs.</p>
-                </div>
-                <div class="footer-col">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="{{ url_for('index') }}">Home</a></li>
-                        <li><a href="{{ url_for('about') }}">About Us</a></li>
-                        <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
-                        <li><a href="{{ url_for('index') }}#impact">Our Impact</a></li>
-                        <li><a href="{{ url_for('contact') }}">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Get Involved</h4>
-                    <ul>
-                        <li><a href="{{ url_for('donate') }}">Donate</a></li>
-                        <li><a href="{{ url_for('contact') }}">Volunteer</a></li>
-                        <li><a href="{{ url_for('contact') }}">Partner with Us</a></li>
-                        <li><a href="{{ url_for('index') }}#programs">Our Programs</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Contact Us</h4>
-                    <ul>
-                        <li><a href="mailto:info@banyanbridge.org">banyanbridgeteam@gmail.com</a></li>
-                        <li><a href="{{ url_for('contact') }}">Send us a message</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Banyan Bridge Foundation. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="assets/js/main.js"></script>
+{% include 'footer.html' %}
 </body>
 </html>
