@@ -1,0 +1,41 @@
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Banyan Bridge Foundation" class="footer-logo">
+                <p>Transforming education and empowering communities through innovative learning programs.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('about') }}">About Us</a></li>
+                    <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
+                    <li><a href="{{ url_for('index') }}#impact">Our Impact</a></li>
+                    <li><a href="{{ url_for('contact') }}">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Get Involved</h4>
+                <ul>
+                    <li><a href="{{ url_for('donate') }}">Donate</a></li>
+                    <li><a href="{{ url_for('contact') }}">Volunteer</a></li>
+                    <li><a href="{{ url_for('contact') }}">Partner with Us</a></li>
+                    <li><a href="{{ url_for('index') }}#programs">Our Programs</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact Us</h4>
+                <ul>
+                    <li><a href="mailto:banyanbridgeteam@gmail.com">banyanbridgeteam@gmail.com</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Banyan Bridge Foundation. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
+<script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
