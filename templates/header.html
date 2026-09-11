@@ -18,6 +18,7 @@
             <li><a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact</a></li>
             {% if enable_login_button %}
             <li><a href="{{ url_for('login') }}" class="btn-donate {% if request.endpoint == 'login' or request.endpoint == 'register' %}active{% endif %}">Login</a></li>
+            <li><button id="voiceBtn" class="btn-voice">Voice</button></li>
             {% endif %}
         </ul>
         <div class="hamburger">
@@ -27,3 +28,79 @@
         </div>
     </div>
 </nav>
+
+<!-- Voice Recording Modal -->
+<div id="voiceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Voice Recording & Assessment</h2>
+            <span id="closeVoiceModal" class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="voiceRecordingContainer" class="voice-container">
+                <label for="referenceText" class="voice-label">Read this text aloud:</label>
+                <textarea id="referenceText" class="voice-textarea" rows="4" placeholder="The quick brown fox jumps over the lazy dog.">The quick brown fox jumps over the lazy dog.</textarea>
+
+                <div class="recording-controls">
+                    <button id="startRecordBtn" class="btn btn-start">🎤 Start Recording</button>
+                    <button id="stopRecordBtn" class="btn btn-stop" disabled>⏹ Stop Recording</button>
+                    <button id="playRecordBtn" class="btn btn-play" disabled>▶ Play Recording</button>
+                </div>
+                
+                <div id="recordingStatus" class="recording-status"></div>
+                
+                <div id="assessmentResults" class="assessment-results" style="display: none;">
+                    <h3>Speech Assessment Results</h3>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <label>RAZ Level:</label>
+                            <span id="razLevel">-</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Words Per Minute (WPM):</label>
+                            <span id="wcpm">-</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Phonics Errors:</label>
+                            <span id="phonicsErrors">0</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Skips:</label>
+                            <span id="skips">0</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Stumbles:</label>
+                            <span id="stumbles">0</span>
+                        </div>
+                        <div class="result-item">
+                            <label>Struggles:</label>
+                            <span id="struggles">0</span>
+                        </div>
+                    </div>
+
+                    <div class="assessment-summary">
+                        <h4>Assessment Summary</h4>
+                        <div class="summary-block">
+                            <strong>What went right:</strong>
+                            <p id="whatWentRight">-</p>
+                        </div>
+                        <div class="summary-block">
+                            <strong>What went wrong:</strong>
+                            <p id="whatWentWrong">-</p>
+                        </div>
+                        <div class="summary-block">
+                            <strong>Why this RAZ level:</strong>
+                            <p id="razReason">-</p>
+                        </div>
+                        <div class="summary-block">
+                            <strong>Phonics errors:</strong>
+                            <p id="phonicsDetail">-</p>
+                        </div>
+                    </div>
+
+                    <button id="submitAssessmentBtn" class="btn btn-primary">Submit Assessment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

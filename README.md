@@ -13,10 +13,10 @@ This is a complete static recreation of the original WordPress website, built wi
 ## Features
 
 ### Public Website
-- **Responsive Design**: Fully responsive layout that works on desktop, tablet, and mobile devices
+- **Responsive Design**: Fully responsive layout for desktop and tablet browsing
 - **Modern UI/UX**: Clean, professional design with smooth animations and transitions
 - **Accessibility**: Semantic HTML and proper ARIA labels for screen readers
-- **Interactive Elements**: Hero image slider, mobile navigation menu, smooth scrolling
+- **Interactive Elements**: Hero image slider, navigation, and smooth scrolling
 
 ### Educational Platform
 - **User Authentication**: Secure login system with role-based access control
@@ -197,7 +197,6 @@ This Flask application can be deployed to various hosting services:
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
 
 ## Security Features
 
