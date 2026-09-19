@@ -195,7 +195,8 @@ img {
     gap: 30px;
 }
 
-.nav-menu a {
+.nav-menu a,
+.nav-menu button {
     font-weight: 500;
     color: var(--text-dark);
     transition: color 0.3s ease;
@@ -203,7 +204,8 @@ img {
 }
 
 .nav-menu a:hover,
-.nav-menu a.active {
+.nav-menu a.active,
+.nav-menu button:hover {
     color: var(--primary-color);
 }
 
@@ -212,6 +214,16 @@ img {
     border: none;
     cursor: pointer;
     font-family: inherit;
+    padding: 0;
+}
+
+.nav-voice {
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+.nav-voice:hover {
+    color: #3a6c49;
 }
 
 .btn-donate {
@@ -1217,6 +1229,10 @@ img {
         width: 100%;
         text-align: left;
         padding: 10px 0;
+    }
+
+    .nav-voice {
+        text-align: left;
     }
     
     .brand-text {
