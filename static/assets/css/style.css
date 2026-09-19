@@ -207,6 +207,13 @@ img {
     color: var(--primary-color);
 }
 
+.nav-menu button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
 .btn-donate {
     background-color: var(--accent-color);
     color: var(--white);
@@ -232,6 +239,7 @@ img {
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: inline-block;
     font-family: 'Montserrat', sans-serif;
 }
 
@@ -1203,6 +1211,12 @@ img {
     
     .nav-menu.active {
         left: 0;
+    }
+
+    .nav-menu button {
+        width: 100%;
+        text-align: left;
+        padding: 10px 0;
     }
     
     .brand-text {
