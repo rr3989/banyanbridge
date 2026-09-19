@@ -16,7 +16,7 @@
             <li><a href="{{ url_for('index') }}#programs">Programs</a></li>
             <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
             <li><a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact</a></li>
-            <li><button id="voiceBtn" class="nav-voice">Voice</button></li>
+            <li><button id="voiceBtn" class="nav-voice">Voice Assessment</button></li>
             {% if enable_login_button %}
             <li><a href="{{ url_for('login') }}" class="btn-donate {% if request.endpoint == 'login' or request.endpoint == 'register' %}active{% endif %}">Login</a></li>
             {% endif %}
