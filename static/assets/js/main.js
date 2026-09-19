@@ -5,8 +5,7 @@ const navMenu = document.querySelector('.nav-menu');
 if (hamburger && navMenu) {
     hamburger.addEventListener('click', () => {
         navMenu.classList.toggle('active');
-        
-        // Animate hamburger
+
         const spans = hamburger.querySelectorAll('span');
         if (navMenu.classList.contains('active')) {
             spans[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
@@ -20,11 +19,12 @@ if (hamburger && navMenu) {
     });
 }
 
-// Close mobile menu when clicking on a link
 const navLinks = document.querySelectorAll('.nav-menu a');
 navLinks.forEach(link => {
     link.addEventListener('click', () => {
-        navMenu.classList.remove('active');
+        if (navMenu) {
+            navMenu.classList.remove('active');
+        }
         if (hamburger) {
             const spans = hamburger.querySelectorAll('span');
             spans[0].style.transform = 'none';
@@ -34,7 +34,6 @@ navLinks.forEach(link => {
     });
 });
 
-// Hero Slider
 const slides = document.querySelectorAll('.slide');
 const prevBtn = document.querySelector('.prev-btn');
 const nextBtn = document.querySelector('.next-btn');
@@ -76,7 +75,7 @@ if (slides.length > 0) {
             startSlideShow();
         });
     }
-    
+
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
             nextSlide();
@@ -84,11 +83,10 @@ if (slides.length > 0) {
             startSlideShow();
         });
     }
-    
+
     startSlideShow();
 }
 
-// Smooth scrolling for anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         const href = this.getAttribute('href');
@@ -96,110 +94,93 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             e.preventDefault();
             const target = document.querySelector(href);
             if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
     });
 });
 
-// Form handling
 const donationForm = document.getElementById('donationForm');
 const contactForm = document.getElementById('contactForm');
 
 if (donationForm) {
-    donationForm.addEventListener('submit', function(e) {
+    donationForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        // Get form data
+
         const formData = new FormData(this);
         const data = Object.fromEntries(formData);
-        
-        // Validate form
+
         if (!data.name || !data.email || !data.amount) {
             alert('Please fill in all required fields.');
             return;
         }
-        
-        // Email validation
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(data.email)) {
             alert('Please enter a valid email address.');
             return;
         }
-        
-        // Amount validation
+
         if (parseInt(data.amount) < 1) {
             alert('Please enter a valid donation amount.');
             return;
         }
-        
-        // Simulate form submission
+
         alert('Thank you for your donation! We will redirect you to the payment gateway.');
-        
-        // In a real implementation, you would send this data to your server
         console.log('Donation form submitted:', data);
-        
-        // Reset form
         this.reset();
     });
 }
 
 if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
+    contactForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        // Get form data
+
         const formData = new FormData(this);
         const data = Object.fromEntries(formData);
-        
-        // Validate form
+
         if (!data.name || !data.email || !data.subject || !data.message) {
             alert('Please fill in all required fields.');
             return;
         }
-        
-        // Email validation
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(data.email)) {
             alert('Please enter a valid email address.');
             return;
         }
-        
-        // Submit form to server
+
         fetch('/contact', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                alert(result.message);
-                this.reset();
-            } else {
-                alert('Error: ' + (result.error || 'Failed to send message'));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while sending your message. Please try again.');
-        });
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    this.reset();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to send message'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while sending your message. Please try again.');
+            });
     });
 }
 
-// Add scroll effect to navbar
 window.addEventListener('scroll', () => {
     const navbar = document.querySelector('.navbar');
-    if (window.scrollY > 50) {
-        navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
-    } else {
-        navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+    if (navbar) {
+        if (window.scrollY > 50) {
+            navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+        } else {
+            navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+        }
     }
 });
 
-// Add animation on scroll
 const observerOptions = {
     threshold: 0.1,
     rootMargin: '0px 0px -50px 0px'
@@ -214,7 +195,6 @@ const observer = new IntersectionObserver((entries) => {
     });
 }, observerOptions);
 
-// Observe all sections and cards
 document.querySelectorAll('.section, .program-card, .impact-item, .vision-card, .team-card, .value-item, .giving-card, .partnership-card, .transparency-item, .opportunity-item').forEach(el => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(20px)';
@@ -222,7 +202,6 @@ document.querySelectorAll('.section, .program-card, .impact-item, .vision-card, 
     observer.observe(el);
 });
 
-// Add active state to navigation based on scroll position
 const sections = document.querySelectorAll('section[id]');
 const navItems = document.querySelectorAll('.nav-menu a');
 
@@ -244,27 +223,23 @@ window.addEventListener('scroll', () => {
     });
 });
 
-// Image lazy loading
 if ('loading' in HTMLImageElement.prototype) {
     const images = document.querySelectorAll('img');
     images.forEach(img => {
         img.loading = 'lazy';
     });
 } else {
-    // Fallback for browsers that don't support lazy loading
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js';
     document.body.appendChild(script);
 }
 
-// Add error handling for images
 document.querySelectorAll('img').forEach(img => {
-    img.addEventListener('error', function() {
+    img.addEventListener('error', function () {
         this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23f0f0f0"/%3E%3Ctext x="50" y="50" font-family="Arial" font-size="12" text-anchor="middle" fill="%23999"%3EImage not available%3C/text%3E%3C/svg%3E';
     });
 });
 
-// Performance optimization: Debounce function
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -277,13 +252,229 @@ function debounce(func, wait) {
     };
 }
 
-// Apply debounce to scroll event
 const debouncedScroll = debounce(() => {
     // Any scroll-related operations that should be debounced
 }, 100);
 
 window.addEventListener('scroll', debouncedScroll);
 
-// Console welcome message
 console.log('%c Welcome to Banyan Bridge Foundation! ', 'background: #2e4669; color: white; padding: 10px; font-size: 16px; border-radius: 5px;');
 console.log('%c Transforming education, empowering communities ', 'background: #4a7c59; color: white; padding: 10px; font-size: 14px; border-radius: 5px;');
+
+let mediaRecorder;
+let audioChunks = [];
+let audioStream;
+let startTime;
+let recordingDuration = 0;
+let lastAudioBlob = null;
+
+const voiceBtn = document.getElementById('voiceBtn');
+const voiceModal = document.getElementById('voiceModal');
+const closeVoiceModal = document.getElementById('closeVoiceModal');
+const startRecordBtn = document.getElementById('startRecordBtn');
+const stopRecordBtn = document.getElementById('stopRecordBtn');
+const playRecordBtn = document.getElementById('playRecordBtn');
+const recordingStatus = document.getElementById('recordingStatus');
+const assessmentResults = document.getElementById('assessmentResults');
+const submitAssessmentBtn = document.getElementById('submitAssessmentBtn');
+const referenceTextInput = document.getElementById('referenceText');
+
+function resetAssessmentDisplay() {
+    if (!assessmentResults) return;
+    assessmentResults.style.display = 'none';
+
+    const fields = [
+        'razLevel', 'wcpm', 'phonicsErrors', 'skips', 'stumbles', 'struggles',
+        'whatWentRight', 'whatWentWrong', 'razReason', 'phonicsDetail'
+    ];
+
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (id === 'razLevel' || id === 'wcpm') {
+            el.textContent = '-';
+        } else if (['phonicsErrors', 'skips', 'stumbles', 'struggles'].includes(id)) {
+            el.textContent = '0';
+        } else {
+            el.textContent = '-';
+        }
+    });
+}
+
+if (voiceBtn) {
+    voiceBtn.addEventListener('click', () => {
+        if (voiceModal) {
+            voiceModal.classList.add('show');
+        }
+        resetAssessmentDisplay();
+    });
+}
+
+if (closeVoiceModal) {
+    closeVoiceModal.addEventListener('click', () => {
+        if (voiceModal) {
+            voiceModal.classList.remove('show');
+        }
+        stopRecording();
+    });
+}
+
+window.addEventListener('click', (e) => {
+    if (voiceModal && e.target === voiceModal) {
+        voiceModal.classList.remove('show');
+        stopRecording();
+    }
+});
+
+if (startRecordBtn) {
+    startRecordBtn.addEventListener('click', async () => {
+        try {
+            if (!navigator.mediaDevices || !window.MediaRecorder) {
+                recordingStatus.textContent = '❌ Your browser does not support microphone recording.';
+                return;
+            }
+
+            resetAssessmentDisplay();
+            audioChunks = [];
+            lastAudioBlob = null;
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                lastAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                recordingDuration = (Date.now() - startTime) / 1000;
+                if (playRecordBtn) {
+                    playRecordBtn.disabled = false;
+                    playRecordBtn.audioBlob = lastAudioBlob;
+                }
+
+                if (lastAudioBlob && lastAudioBlob.size > 0) {
+                    assessmentResults.style.display = 'block';
+                    analyzeRecording();
+                }
+            };
+
+            mediaRecorder.start();
+            startTime = Date.now();
+
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = false;
+            recordingStatus.textContent = '🎙️ Recording in progress...';
+            recordingStatus.classList.add('recording');
+        } catch (error) {
+            recordingStatus.textContent = '❌ Error accessing microphone: ' + (error.message || 'Unknown microphone error');
+            console.error('Error accessing microphone:', error);
+        }
+    });
+}
+
+if (stopRecordBtn) {
+    stopRecordBtn.addEventListener('click', () => {
+        stopRecording();
+    });
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+        }
+
+        if (startRecordBtn) startRecordBtn.disabled = false;
+        if (stopRecordBtn) stopRecordBtn.disabled = true;
+        if (recordingStatus) {
+            recordingStatus.textContent = '✅ Recording stopped. Duration: ' + Number(recordingDuration || 0).toFixed(2) + 's';
+            recordingStatus.classList.remove('recording');
+        }
+    }
+}
+
+if (playRecordBtn) {
+    playRecordBtn.addEventListener('click', () => {
+        if (playRecordBtn.audioBlob) {
+            const audioUrl = URL.createObjectURL(playRecordBtn.audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+        }
+    });
+}
+
+async function analyzeRecording() {
+    if (!lastAudioBlob || lastAudioBlob.size === 0) {
+        recordingStatus.textContent = '❌ No audio was captured. Please record again.';
+        return;
+    }
+
+    const referenceText = referenceTextInput ? referenceTextInput.value.trim() : '';
+    if (!referenceText) {
+        recordingStatus.textContent = '❌ Please enter the reading text before submitting the recording.';
+        return;
+    }
+
+    assessmentResults.style.display = 'block';
+    recordingStatus.textContent = '🔄 Transcribing audio locally with Whisper...';
+    recordingStatus.classList.add('recording');
+
+    try {
+        const formData = new FormData();
+        formData.append('audio', lastAudioBlob, 'recording.webm');
+        formData.append('reference_text', referenceText);
+        formData.append('duration_seconds', String(recordingDuration || 0));
+
+        const response = await fetch('/api/voice/analyze', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Speech analysis failed.');
+        }
+
+        document.getElementById('razLevel').textContent = data.raz_level || 'N/A';
+        document.getElementById('wcpm').textContent = Number(data.wpm || 0).toFixed(1) + ' WPM';
+        document.getElementById('phonicsErrors').textContent = Number(data.phonics_errors || 0);
+        document.getElementById('skips').textContent = Number(data.skips || 0);
+        document.getElementById('stumbles').textContent = Number(data.stumbles || 0);
+        document.getElementById('struggles').textContent = Number(data.struggles || 0);
+
+        const strengths = Array.isArray(data.strengths) && data.strengths.length ? data.strengths.join(' ') : 'No major strengths detected.';
+        const issues = Array.isArray(data.issues) && data.issues.length ? data.issues.join(' ') : 'No major issues were detected.';
+        document.getElementById('whatWentRight').textContent = strengths;
+        document.getElementById('whatWentWrong').textContent = issues;
+        document.getElementById('razReason').textContent = data.raz_reason || 'RAZ level was assigned based on pace and phonics errors.';
+        document.getElementById('phonicsDetail').textContent = data.phonics_error_detail || 'No phonics mismatches were recorded.';
+
+        recordingStatus.textContent = data.transcript
+            ? '✅ Transcript captured: ' + data.transcript.slice(0, 120)
+            : '✅ Assessment complete.';
+        recordingStatus.classList.remove('recording');
+    } catch (error) {
+        recordingStatus.textContent = '❌ ' + (error.message || 'Unable to analyze the audio right now.');
+        recordingStatus.classList.remove('recording');
+        console.error('Voice analysis failed:', error);
+    }
+}
+
+if (submitAssessmentBtn) {
+    submitAssessmentBtn.addEventListener('click', () => {
+        if (voiceModal) {
+            voiceModal.classList.remove('show');
+        }
+        if (recordingStatus) {
+            recordingStatus.textContent = 'Assessment submitted successfully.';
+        }
+        if (assessmentResults) {
+            assessmentResults.style.display = 'none';
+        }
+    });
+}
