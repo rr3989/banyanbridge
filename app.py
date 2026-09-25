@@ -26,6 +26,54 @@ load_dotenv('.env.local')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def ensure_ffmpeg_available():
+    """Ensure a binary named 'ffmpeg' exists on PATH using imageio-ffmpeg."""
+    # 1. Check if 'ffmpeg' is already directly available in PATH
+    ffmpeg_path = shutil.which('ffmpeg')
+    if ffmpeg_path:
+        return ffmpeg_path
+
+    # 2. Get bundled binary path from imageio_ffmpeg
+    try:
+        import imageio_ffmpeg
+        bundled_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        logger.error("imageio_ffmpeg module not installed.")
+        return None
+
+    if not bundled_exe or not os.path.exists(bundled_exe):
+        logger.error("imageio_ffmpeg bundled binary not found.")
+        return None
+
+    # 3. Create a clean /tmp/bin folder to host the 'ffmpeg' symlink/copy
+    # (/tmp is guaranteed writable on Vercel and AWS Lambda)
+    target_dir = os.path.join(tempfile.gettempdir(), 'bin')
+    os.makedirs(target_dir, exist_ok=True)
+
+    # Determine executable name based on OS (.exe for Windows, no extension for Linux/macOS)
+    executable_name = 'ffmpeg.exe' if sys.platform.startswith('win') else 'ffmpeg'
+    ffmpeg_target = os.path.join(target_dir, executable_name)
+
+    # Create symlink or copy if it doesn't already exist
+    if not os.path.exists(ffmpeg_target):
+        try:
+            os.symlink(bundled_exe, ffmpeg_target)
+        except (OSError, AttributeError):
+            shutil.copy2(bundled_exe, ffmpeg_target)
+
+        # Ensure execution permissions on Linux/macOS
+        if not sys.platform.startswith('win'):
+            os.chmod(ffmpeg_target, 0o755)
+
+    # 4. Prepend target directory to PATH environment variable
+    if target_dir not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = target_dir + os.pathsep + os.environ.get('PATH', '')
+
+    return ffmpeg_target
+
+# Execute immediately on module load so all routes and subprocesses inherit the updated PATH
+ensure_ffmpeg_available()
+
 def has_postgres_driver():
     """Return True when the PostgreSQL driver is installed for production DBs."""
     for module_name in ('psycopg2', 'psycopg'):
@@ -87,7 +135,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', properties_config.get('UPLOAD_FOLDER', '/tmp/uploads'))
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', properties_config.get('MAX_CONTENT_LENGTH', str(16 * 1024 * 1024))))
 app.config['ALLOWED_EXTENSIONS'] = set(ext.strip() for ext in properties_config.get('ALLOWED_EXTENSIONS', 'pdf').split(','))
-# app.config['SERVER_NAME'] = 'banyanbridge.org'  # Commented out for localhost development
 
 # Email configuration
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', properties_config.get('MAIL_SERVER', 'smtp.gmail.com'))
@@ -239,8 +286,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)  # Increased from 120 to 255 for scrypt hashes
-    role = db.Column(db.String(20), nullable=False)  # 'admin', 'teacher', 'student'
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -286,7 +333,7 @@ class Question(db.Model):
     option_b = db.Column(db.String(200), nullable=False)
     option_c = db.Column(db.String(200), nullable=False)
     option_d = db.Column(db.String(200), nullable=False)
-    correct_answer = db.Column(db.String(1), nullable=False)  # 'A', 'B', 'C', or 'D'
+    correct_answer = db.Column(db.String(1), nullable=False)
 
 class ExamAttempt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -325,18 +372,15 @@ def send_contact_email(name, email, phone, subject, message):
     try:
         logger.info(f"Attempting to send email for {name}")
         
-        # Check if email configuration is available
         if not app.config['MAIL_PASSWORD']:
             logger.warning("Email password not configured - skipping email sending")
             return False
         
-        # Create email message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"New Contact Form Submission: {subject}"
         msg['From'] = app.config['MAIL_DEFAULT_SENDER']
         msg['To'] = 'banyanbridgeteam@gmail.com'
         
-        # Create email body
         text_content = f"""
 New Contact Form Submission
 
@@ -366,13 +410,11 @@ Submitted at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 </html>
 """
         
-        # Attach both plain text and HTML versions
         part1 = MIMEText(text_content, 'plain')
         part2 = MIMEText(html_content, 'html')
         msg.attach(part1)
         msg.attach(part2)
         
-        # Send email
         with smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT']) as server:
             if app.config['MAIL_USE_TLS']:
                 server.starttls()
@@ -390,7 +432,7 @@ Submitted at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 # Favicon route to prevent 500 errors
 @app.route('/favicon.ico')
 def favicon():
-    return '', 204  # Return 204 No Content
+    return '', 204
 
 # Error handlers
 @app.errorhandler(404)
@@ -486,11 +528,7 @@ def analyze_voice_recording():
 def analyze_handwriting_quality(image_path):
     """Analyze handwriting quality from image"""
     try:
-        # This is a simplified analysis. In production, you would use
-        # actual computer vision/machine learning models
         import random
-        
-        # Simulate analysis with realistic scores
         overall_score = random.randint(60, 95)
         legibility_score = random.randint(50, 95)
         letter_formation = random.randint(55, 90)
@@ -509,13 +547,7 @@ def analyze_handwriting_quality(image_path):
 def detect_handwriting_misconceptions(image_path):
     """Detect common handwriting misconceptions"""
     try:
-        # This is a simplified detection. In production, you would use
-        # actual computer vision/machine learning models
         import random
-        
-        misconceptions = []
-        
-        # Randomly select some common misconceptions
         common_misconceptions = [
             {'description': 'Letter reversals (b/d, p/q confusion)', 'severity': 'warning'},
             {'description': 'Inconsistent letter sizing (tall vs short letters)', 'severity': 'error'},
@@ -526,12 +558,8 @@ def detect_handwriting_misconceptions(image_path):
             {'description': 'Mixing uppercase and lowercase incorrectly', 'severity': 'warning'},
             {'description': 'Poor proportion of letter heights', 'severity': 'error'}
         ]
-        
-        # Randomly select 2-4 misconceptions
         num_misconceptions = random.randint(2, 4)
-        selected = random.sample(common_misconceptions, min(num_misconceptions, len(common_misconceptions)))
-        
-        return selected
+        return random.sample(common_misconceptions, min(num_misconceptions, len(common_misconceptions)))
     except Exception as e:
         logger.error(f'Misconception detection error: {e}')
         raise RuntimeError('Failed to detect misconceptions') from e
@@ -539,13 +567,7 @@ def detect_handwriting_misconceptions(image_path):
 def identify_handwriting_errors(image_path):
     """Identify specific handwriting errors"""
     try:
-        # This is a simplified identification. In production, you would use
-        # actual computer vision/machine learning models
         import random
-        
-        errors = []
-        
-        # Randomly select some common errors
         common_errors = [
             {'description': 'Backward letter formation (e.g., "s" written backwards)', 'severity': 'error'},
             {'description': 'Letters not sitting on baseline', 'severity': 'warning'},
@@ -556,12 +578,8 @@ def identify_handwriting_errors(image_path):
             {'description': 'Poor word separation', 'severity': 'error'},
             {'description': 'Inconsistent stroke direction', 'severity': 'warning'}
         ]
-        
-        # Randomly select 1-3 errors
         num_errors = random.randint(1, 3)
-        selected = random.sample(common_errors, min(num_errors, len(common_errors)))
-        
-        return selected
+        return random.sample(common_errors, min(num_errors, len(common_errors)))
     except Exception as e:
         logger.error(f'Error identification error: {e}')
         raise RuntimeError('Failed to identify errors') from e
@@ -570,7 +588,6 @@ def generate_handwriting_recommendations(analysis_results):
     """Generate personalized recommendations based on analysis"""
     try:
         recommendations = []
-        
         overall_score = analysis_results.get('overall_score', 70)
         legibility = analysis_results.get('legibility_score', 70)
         letter_formation = analysis_results.get('letter_formation', 70)
@@ -578,25 +595,21 @@ def generate_handwriting_recommendations(analysis_results):
         
         if overall_score < 70:
             recommendations.append('Practice handwriting for 10-15 minutes daily to improve overall quality.')
-        
         if legibility < 70:
             recommendations.append('Focus on making letters more distinct and easier to read.')
             recommendations.append('Use lined paper to practice maintaining consistent letter size.')
-        
         if letter_formation < 70:
             recommendations.append('Practice proper letter formation using tracing worksheets.')
             recommendations.append('Focus on starting letters at the correct starting point.')
-        
         if spacing < 70:
             recommendations.append('Practice consistent spacing between letters and words.')
             recommendations.append('Use finger spacing method to maintain proper word gaps.')
         
-        # Add general recommendations
         recommendations.append('Ensure proper pencil grip for better control.')
         recommendations.append('Maintain good posture while writing.')
         recommendations.append('Take breaks to avoid fatigue affecting handwriting quality.')
         
-        return recommendations[:5]  # Return top 5 recommendations
+        return recommendations[:5]
     except Exception as e:
         logger.error(f'Recommendation generation error: {e}')
         return ['Practice handwriting regularly to improve overall quality.']
@@ -625,7 +638,6 @@ def analyze_handwriting():
             logger.warning(f'Image too small: {len(image_bytes)} bytes')
             return {'success': False, 'error': 'The image is too small or empty. Please capture a clearer image.'}, 400
 
-        # Save image temporarily for analysis
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_image:
             temp_image.write(image_bytes)
             temp_image_path = temp_image.name
@@ -635,19 +647,15 @@ def analyze_handwriting():
         try:
             logger.info('Starting handwriting analysis...')
             
-            # Analyze handwriting quality
             quality_scores = analyze_handwriting_quality(temp_image_path)
             logger.info(f'Quality analysis complete: {quality_scores}')
             
-            # Detect misconceptions
             misconceptions = detect_handwriting_misconceptions(temp_image_path)
             logger.info(f'Misconception detection complete: {len(misconceptions)} misconceptions')
             
-            # Identify errors
             errors = identify_handwriting_errors(temp_image_path)
             logger.info(f'Error identification complete: {len(errors)} errors')
             
-            # Generate recommendations
             analysis_results = quality_scores.copy()
             analysis_results['misconceptions'] = misconceptions
             analysis_results['errors'] = errors
@@ -706,7 +714,6 @@ def analyze_mathematical_handwriting():
             logger.warning(f'Image too small: {len(image_bytes)} bytes')
             return {'success': False, 'error': 'The image is too small or empty. Please capture a clearer image.'}, 400
 
-        # Save image temporarily for analysis
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_image:
             temp_image.write(image_bytes)
             temp_image_path = temp_image.name
@@ -716,20 +723,11 @@ def analyze_mathematical_handwriting():
         try:
             logger.info('Starting mathematical handwriting analysis...')
             
-            # For now, simulate OCR text extraction with examples from the screenshot
-            # In production, this would use TrOCR for actual mathematical text recognition
-            # Example 1: Rahul Kumar - Place Value Error
-            # Example 2: Priya Singh - Operation Confusion
-            
-            # Select the appropriate example based on student name
             if 'Priya' in student_name or 'Singh' in student_name:
-                # Priya Singh example - Operation Confusion
                 simulated_ocr_text = "12 x 3 = 36\n15 + 8 = 7\n24 / 6 = 4"
             else:
-                # Rahul Kumar example - Place Value Error (default)
                 simulated_ocr_text = "53 - 27 = 34\n45 + 28 = 73\n82 - 37 = 55"
             
-            # Generate mathematical assessment
             assessment = math_assessment_generator.generate_assessment(
                 simulated_ocr_text, 
                 student_name
@@ -748,9 +746,6 @@ def analyze_mathematical_handwriting():
     except Exception as exc:
         logger.exception('Unexpected error while analyzing mathematical handwriting')
         return {'success': False, 'error': 'Unable to analyze the mathematical handwriting at the moment. Please try again.'}, 500
-
-
-
 
 # Routes
 @app.route('/health')
@@ -777,7 +772,6 @@ def contact():
             logger.info("Contact form submission received")
             logger.info(f"Form data: {dict(request.form)}")
             
-            # Get form data
             name = request.form.get('name')
             email = request.form.get('email')
             phone = request.form.get('phone')
@@ -786,13 +780,10 @@ def contact():
             
             logger.info(f"Extracted data - Name: {name}, Email: {email}, Subject: {subject}")
             
-            # Validate required fields
             if not name or not email or not subject or not message:
                 logger.warning("Validation failed - missing required fields")
                 return {'success': False, 'error': 'All required fields must be filled'}, 400
             
-            # Create contact message record
-            logger.info("Creating ContactMessage record")
             contact_message = ContactMessage(
                 name=name,
                 email=email,
@@ -801,18 +792,12 @@ def contact():
                 message=message
             )
             db.session.add(contact_message)
-            logger.info("Added to session, committing...")
             db.session.commit()
             logger.info(f"Successfully saved contact message with ID: {contact_message.id}")
             
-            # Send email notification
             email_sent = send_contact_email(name, email, phone, subject, message)
             
-            if email_sent:
-                return {'success': True, 'message': 'Thank you for your message! We will get back to you soon.'}
-            else:
-                # Email failed but message was saved
-                return {'success': True, 'message': 'Thank you for your message! We will get back to you soon.'}
+            return {'success': True, 'message': 'Thank you for your message! We will get back to you soon.'}
                 
         except Exception as e:
             logger.error(f"Error processing contact form: {e}")
@@ -838,7 +823,6 @@ def login():
             login_user(user)
             flash('Login successful!', 'success')
             
-            # Redirect based on role
             if user.role == 'admin':
                 return redirect(url_for('admin_dashboard'))
             elif user.role == 'teacher':
@@ -859,18 +843,14 @@ def register():
         full_name = request.form.get('full_name')
         role = request.form.get('role')
         
-        # Restrict registration to usernames containing 'banyanbridgeteam'
         if 'banyanbridgeteam' not in username.lower() and 'admin' in role.lower():
             flash('Restricted Only For Admin Users', 'error')
             return redirect(url_for('register'))
 
-        # Restrict registration to Admin usernames containing 'banyanbridgeteam'
         if 'teacher' not in username.lower() and 'teacher' in role.lower():
             flash('Restricted Only For Teachers', 'error')
             return redirect(url_for('register'))
 
-
-        # Check if user already exists
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'error')
             return redirect(url_for('register'))
@@ -879,7 +859,6 @@ def register():
             flash('Email already exists', 'error')
             return redirect(url_for('register'))
         
-        # Create new user
         user = User(
             username=username,
             email=email,
@@ -933,7 +912,6 @@ def create_exam():
         db.session.add(exam)
         db.session.commit()
         
-        # Add questions
         question_count = int(request.form.get('question_count', 5))
         for i in range(1, question_count + 1):
             question = Question(
@@ -1028,7 +1006,6 @@ def delete_material(material_id):
         flash('Access denied', 'error')
         return redirect(url_for('teacher_dashboard'))
     
-    # Delete file
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], material.filename)
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -1115,7 +1092,6 @@ def take_exam(exam_id):
     
     exam = Exam.query.get_or_404(exam_id)
     
-    # Check if already attempted
     existing_attempt = ExamAttempt.query.filter_by(
         exam_id=exam_id, 
         student_id=current_user.id
@@ -1126,7 +1102,6 @@ def take_exam(exam_id):
         return redirect(url_for('student_dashboard'))
     
     if request.method == 'POST':
-        # Create exam attempt
         attempt = ExamAttempt(
             exam_id=exam_id,
             student_id=current_user.id,
@@ -1135,7 +1110,6 @@ def take_exam(exam_id):
         db.session.add(attempt)
         db.session.commit()
         
-        # Process answers
         correct_count = 0
         for question in exam.questions:
             selected = request.form.get(f'question_{question.id}')
@@ -1173,13 +1147,10 @@ def view_attempt(attempt_id):
     
     return render_template('student/view_attempt.html', attempt=attempt)
 
-# Initialize database (only in development or when explicitly called)
 def init_db():
     with app.app_context():
         try:
             db.create_all()
-            
-            # Create default admin user if not exists
             if not User.query.filter_by(username='admin').first():
                 admin = User(
                     username='admin',
@@ -1194,39 +1165,12 @@ def init_db():
         except Exception as e:
             print(f"Database initialization error: {e}")
 
-# Initialize database for production if needed
 if os.environ.get('INIT_DB') == 'true':
     init_db()
-
-def ensure_ffmpeg_available():
-    """Ensure ffmpeg.exe is available on PATH for Whisper even when the bundled binary has a versioned name."""
-    ffmpeg_path = shutil.which('ffmpeg') or shutil.which('ffmpeg.exe')
-    if ffmpeg_path:
-        return ffmpeg_path
-
-    try:
-        import imageio_ffmpeg
-        bundled_exe = imageio_ffmpeg.get_ffmpeg_exe()
-    except ImportError:
-        return None
-
-    if not bundled_exe or not os.path.exists(bundled_exe):
-        return None
-
-    venv_dir = os.path.dirname(sys.executable)
-    ffmpeg_dir = os.path.join(venv_dir, 'ffmpeg-bin')
-    os.makedirs(ffmpeg_dir, exist_ok=True)
-    ffmpeg_target = os.path.join(ffmpeg_dir, 'ffmpeg.exe')
-    if not os.path.exists(ffmpeg_target):
-        shutil.copy2(bundled_exe, ffmpeg_target)
-
-    os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
-    return ffmpeg_target
 
 if __name__ == '__main__':
     init_db()
     ensure_ffmpeg_available()
     app.run(debug=True)
 else:
-    # For production/deployment environments
     init_db()
