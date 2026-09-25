@@ -13,7 +13,6 @@
     }
   ],
   "env": {
-    "DATABASE_URL": "@database_url",
     "ENABLE_LOGIN_BUTTON": "true"
   }
 }
