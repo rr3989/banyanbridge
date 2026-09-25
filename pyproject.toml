@@ -1,0 +1,9 @@
+[project]
+name = "banyanbridge"
+version = "0.1.0"
+dependencies = [
+    # list your project dependencies here if needed
+]
+
+[tool.uv.extra-build-dependencies]
+openai-whisper = ["setuptools"]
