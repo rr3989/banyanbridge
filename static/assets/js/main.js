@@ -274,10 +274,46 @@ const closeVoiceModal = document.getElementById('closeVoiceModal');
 const startRecordBtn = document.getElementById('startRecordBtn');
 const stopRecordBtn = document.getElementById('stopRecordBtn');
 const playRecordBtn = document.getElementById('playRecordBtn');
+const analyzeRecordBtn = document.getElementById('analyzeRecordBtn');
 const recordingStatus = document.getElementById('recordingStatus');
 const assessmentResults = document.getElementById('assessmentResults');
 const submitAssessmentBtn = document.getElementById('submitAssessmentBtn');
 const referenceTextInput = document.getElementById('referenceText');
+
+// Handwriting Assessment Variables
+const handwritingBtn = document.getElementById('handwritingBtn');
+const handwritingModal = document.getElementById('handwritingModal');
+const closeHandwritingModal = document.getElementById('closeHandwritingModal');
+const startCameraBtn = document.getElementById('startCameraBtn');
+const captureBtn = document.getElementById('captureBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const analyzeHandwritingBtn = document.getElementById('analyzeHandwritingBtn');
+const submitHandwritingBtn = document.getElementById('submitHandwritingBtn');
+const cameraPreview = document.getElementById('cameraPreview');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const capturedImage = document.getElementById('capturedImage');
+const handwritingStatus = document.getElementById('handwritingStatus');
+const handwritingResults = document.getElementById('handwritingResults');
+
+// Math Assessment Variables
+const mathBtn = document.getElementById('mathBtn');
+const mathModal = document.getElementById('mathModal');
+const closeMathModal = document.getElementById('closeMathModal');
+const startMathCameraBtn = document.getElementById('startMathCameraBtn');
+const captureMathBtn = document.getElementById('captureMathBtn');
+const retakeMathBtn = document.getElementById('retakeMathBtn');
+const analyzeMathBtn = document.getElementById('analyzeMathBtn');
+const mathCameraPreview = document.getElementById('mathCameraPreview');
+const mathCameraCanvas = document.getElementById('mathCameraCanvas');
+const mathCapturedImage = document.getElementById('mathCapturedImage');
+const mathStatus = document.getElementById('mathStatus');
+const mathResults = document.getElementById('mathResults');
+const studentNameInput = document.getElementById('studentName');
+
+let cameraStream = null;
+let capturedImageData = null;
+let mathCameraStream = null;
+let mathCapturedImageData = null;
 
 function resetAssessmentDisplay() {
     if (!assessmentResults) return;
@@ -300,6 +336,11 @@ function resetAssessmentDisplay() {
             el.textContent = '-';
         }
     });
+
+    // Reset button states
+    if (playRecordBtn) playRecordBtn.disabled = true;
+    if (analyzeRecordBtn) analyzeRecordBtn.disabled = true;
+    if (recordingStatus) recordingStatus.textContent = '';
 }
 
 if (voiceBtn) {
@@ -350,14 +391,24 @@ if (startRecordBtn) {
             mediaRecorder.onstop = () => {
                 lastAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
                 recordingDuration = (Date.now() - startTime) / 1000;
+                
+                console.log('Recording stopped. Blob size:', lastAudioBlob.size, 'bytes');
+                console.log('Recording duration:', recordingDuration, 'seconds');
+                
                 if (playRecordBtn) {
                     playRecordBtn.disabled = false;
                     playRecordBtn.audioBlob = lastAudioBlob;
                 }
 
+                if (analyzeRecordBtn) {
+                    analyzeRecordBtn.disabled = false;
+                }
+
                 if (lastAudioBlob && lastAudioBlob.size > 0) {
+                    recordingStatus.textContent = '✅ Recording complete. Click "Analyze Recording" to process your voice.';
                     assessmentResults.style.display = 'block';
-                    analyzeRecording();
+                } else {
+                    recordingStatus.textContent = '❌ No audio was captured. Please record again.';
                 }
             };
 
@@ -390,6 +441,7 @@ function stopRecording() {
 
         if (startRecordBtn) startRecordBtn.disabled = false;
         if (stopRecordBtn) stopRecordBtn.disabled = true;
+        if (analyzeRecordBtn) analyzeRecordBtn.disabled = true;
         if (recordingStatus) {
             recordingStatus.textContent = '✅ Recording stopped. Duration: ' + Number(recordingDuration || 0).toFixed(2) + 's';
             recordingStatus.classList.remove('recording');
@@ -407,9 +459,21 @@ if (playRecordBtn) {
     });
 }
 
+if (analyzeRecordBtn) {
+    analyzeRecordBtn.addEventListener('click', () => {
+        analyzeRecording();
+    });
+}
+
 async function analyzeRecording() {
     if (!lastAudioBlob || lastAudioBlob.size === 0) {
         recordingStatus.textContent = '❌ No audio was captured. Please record again.';
+        return;
+    }
+
+    // Check if the audio blob is too small (less than 1KB)
+    if (lastAudioBlob.size < 1000) {
+        recordingStatus.textContent = '❌ The recording is too short. Please record again and speak clearly.';
         return;
     }
 
@@ -429,12 +493,20 @@ async function analyzeRecording() {
         formData.append('reference_text', referenceText);
         formData.append('duration_seconds', String(recordingDuration || 0));
 
+        console.log('Sending voice analysis request...');
+        console.log('Audio blob size:', lastAudioBlob.size);
+        console.log('Reference text:', referenceText);
+        console.log('Duration:', recordingDuration);
+
         const response = await fetch('/api/voice/analyze', {
             method: 'POST',
             body: formData,
         });
 
+        console.log('Response status:', response.status);
+        
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (!response.ok || !data.success) {
             throw new Error(data.error || 'Speech analysis failed.');
@@ -477,4 +549,627 @@ if (submitAssessmentBtn) {
             assessmentResults.style.display = 'none';
         }
     });
+}
+
+// Handwriting Assessment Functionality
+if (handwritingBtn) {
+    handwritingBtn.addEventListener('click', () => {
+        if (handwritingModal) {
+            handwritingModal.classList.add('show');
+        }
+        resetHandwritingAssessment();
+    });
+}
+
+if (closeHandwritingModal) {
+    closeHandwritingModal.addEventListener('click', () => {
+        if (handwritingModal) {
+            handwritingModal.classList.remove('show');
+        }
+        stopCamera();
+    });
+}
+
+window.addEventListener('click', (e) => {
+    if (handwritingModal && e.target === handwritingModal) {
+        handwritingModal.classList.remove('show');
+        stopCamera();
+    }
+});
+
+function resetHandwritingAssessment() {
+    if (handwritingResults) {
+        handwritingResults.style.display = 'none';
+    }
+    
+    if (handwritingStatus) {
+        handwritingStatus.textContent = '';
+    }
+    
+    if (capturedImage) {
+        capturedImage.style.display = 'none';
+        capturedImage.src = '';
+    }
+    
+    if (cameraPreview) {
+        cameraPreview.style.display = 'block';
+    }
+    
+    if (captureBtn) {
+        captureBtn.disabled = true;
+    }
+    
+    if (analyzeHandwritingBtn) {
+        analyzeHandwritingBtn.disabled = true;
+    }
+    
+    if (retakeBtn) {
+        retakeBtn.style.display = 'none';
+    }
+    
+    capturedImageData = null;
+    stopCamera();
+}
+
+if (startCameraBtn) {
+    startCameraBtn.addEventListener('click', async () => {
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                handwritingStatus.textContent = '❌ Your browser does not support camera access.';
+                return;
+            }
+
+            cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+
+            if (cameraPreview) {
+                cameraPreview.srcObject = cameraStream;
+                cameraPreview.style.display = 'block';
+            }
+
+            if (capturedImage) {
+                capturedImage.style.display = 'none';
+            }
+
+            if (captureBtn) {
+                captureBtn.disabled = false;
+            }
+
+            if (startCameraBtn) {
+                startCameraBtn.disabled = true;
+            }
+
+            if (handwritingStatus) {
+                handwritingStatus.textContent = '📷 Camera started. Position the paper and click Capture.';
+            }
+
+        } catch (error) {
+            handwritingStatus.textContent = '❌ Error accessing camera: ' + (error.message || 'Unknown camera error');
+            console.error('Error accessing camera:', error);
+        }
+    });
+}
+
+if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+        if (!cameraStream || !cameraPreview) {
+            handwritingStatus.textContent = '❌ Camera not available.';
+            return;
+        }
+
+        const canvas = cameraCanvas;
+        const video = cameraPreview;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        capturedImageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        if (capturedImage) {
+            capturedImage.src = capturedImageData;
+            capturedImage.style.display = 'block';
+        }
+        
+        if (cameraPreview) {
+            cameraPreview.style.display = 'none';
+        }
+        
+        if (captureBtn) {
+            captureBtn.disabled = true;
+        }
+        
+        if (analyzeHandwritingBtn) {
+            analyzeHandwritingBtn.disabled = false;
+        }
+        
+        if (retakeBtn) {
+            retakeBtn.style.display = 'inline-block';
+        }
+        
+        if (handwritingStatus) {
+            handwritingStatus.textContent = '✅ Image captured. Click "Analyze Handwriting" to process.';
+        }
+    });
+}
+
+if (retakeBtn) {
+    retakeBtn.addEventListener('click', () => {
+        if (capturedImage) {
+            capturedImage.style.display = 'none';
+            capturedImage.src = '';
+        }
+        
+        if (cameraPreview) {
+            cameraPreview.style.display = 'block';
+        }
+        
+        if (captureBtn) {
+            captureBtn.disabled = false;
+        }
+        
+        if (analyzeHandwritingBtn) {
+            analyzeHandwritingBtn.disabled = true;
+        }
+        
+        if (retakeBtn) {
+            retakeBtn.style.display = 'none';
+        }
+        
+        capturedImageData = null;
+        
+        if (handwritingStatus) {
+            handwritingStatus.textContent = '📷 Ready to capture again.';
+        }
+    });
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    
+    if (startCameraBtn) {
+        startCameraBtn.disabled = false;
+    }
+}
+
+if (analyzeHandwritingBtn) {
+    analyzeHandwritingBtn.addEventListener('click', () => {
+        analyzeHandwriting();
+    });
+}
+
+async function analyzeHandwriting() {
+    if (!capturedImageData) {
+        handwritingStatus.textContent = '❌ No image captured. Please capture an image first.';
+        return;
+    }
+
+    handwritingStatus.textContent = '🔄 Analyzing handwriting...';
+    handwritingResults.style.display = 'block';
+
+    try {
+        // Convert base64 to blob
+        const response = await fetch(capturedImageData);
+        const blob = await response.blob();
+        
+        const formData = new FormData();
+        formData.append('image', blob, 'handwriting.jpg');
+
+        console.log('Sending handwriting analysis request...');
+        console.log('Image blob size:', blob.size);
+
+        const apiResponse = await fetch('/api/handwriting/analyze', {
+            method: 'POST',
+            body: formData,
+        });
+
+        console.log('Response status:', apiResponse.status);
+        
+        const data = await apiResponse.json();
+        console.log('Response data:', data);
+
+        if (!apiResponse.ok || !data.success) {
+            throw new Error(data.error || 'Handwriting analysis failed.');
+        }
+
+        // Display results
+        document.getElementById('overallScore').textContent = data.overall_score || '-';
+        document.getElementById('legibilityScore').textContent = data.legibility_score || '-';
+        document.getElementById('letterFormation').textContent = data.letter_formation || '-';
+        document.getElementById('spacingScore').textContent = data.spacing_score || '-';
+
+        // Display misconceptions
+        const misconceptionList = document.getElementById('misconceptionList');
+        if (data.misconceptions && data.misconceptions.length > 0) {
+            misconceptionList.innerHTML = data.misconceptions.map(m => 
+                `<li class="${m.severity}-type">${m.description}</li>`
+            ).join('');
+        } else {
+            misconceptionList.innerHTML = '<p>No misconceptions detected.</p>';
+        }
+
+        // Display errors
+        const errorList = document.getElementById('errorList');
+        if (data.errors && data.errors.length > 0) {
+            errorList.innerHTML = data.errors.map(e => 
+                `<li class="${e.severity}-type">${e.description}</li>`
+            ).join('');
+        } else {
+            errorList.innerHTML = '<p>No errors detected.</p>';
+        }
+
+        // Display recommendations
+        const recommendationList = document.getElementById('recommendationList');
+        if (data.recommendations && data.recommendations.length > 0) {
+            recommendationList.innerHTML = data.recommendations.map(r => 
+                `<li>${r}</li>`
+            ).join('');
+        } else {
+            recommendationList.innerHTML = '<p>No specific recommendations.</p>';
+        }
+
+        handwritingStatus.textContent = '✅ Handwriting analysis complete.';
+    } catch (error) {
+        handwritingStatus.textContent = '❌ ' + (error.message || 'Unable to analyze handwriting right now.');
+        console.error('Handwriting analysis failed:', error);
+    }
+}
+
+if (submitHandwritingBtn) {
+    submitHandwritingBtn.addEventListener('click', () => {
+        if (handwritingModal) {
+            handwritingModal.classList.remove('show');
+        }
+        if (handwritingStatus) {
+            handwritingStatus.textContent = 'Assessment submitted successfully.';
+        }
+        if (handwritingResults) {
+            handwritingResults.style.display = 'none';
+        }
+        stopCamera();
+    });
+}
+
+// Math Assessment Functionality
+if (mathBtn) {
+    mathBtn.addEventListener('click', () => {
+        if (mathModal) {
+            mathModal.classList.add('show');
+        }
+        resetMathAssessment();
+    });
+}
+
+if (closeMathModal) {
+    closeMathModal.addEventListener('click', () => {
+        if (mathModal) {
+            mathModal.classList.remove('show');
+        }
+        stopMathCamera();
+    });
+}
+
+window.addEventListener('click', (e) => {
+    if (mathModal && e.target === mathModal) {
+        mathModal.classList.remove('show');
+        stopMathCamera();
+    }
+});
+
+function resetMathAssessment() {
+    if (mathResults) {
+        mathResults.style.display = 'none';
+        mathResults.innerHTML = '';
+    }
+    
+    if (mathStatus) {
+        mathStatus.textContent = '';
+    }
+    
+    if (mathCapturedImage) {
+        mathCapturedImage.style.display = 'none';
+        mathCapturedImage.src = '';
+    }
+    
+    if (mathCameraPreview) {
+        mathCameraPreview.style.display = 'block';
+    }
+    
+    if (captureMathBtn) {
+        captureMathBtn.disabled = true;
+    }
+    
+    if (analyzeMathBtn) {
+        analyzeMathBtn.disabled = true;
+    }
+    
+    if (retakeMathBtn) {
+        retakeMathBtn.style.display = 'none';
+    }
+    
+    if (studentNameInput) {
+        studentNameInput.value = '';
+    }
+    
+    mathCapturedImageData = null;
+    stopMathCamera();
+}
+
+if (startMathCameraBtn) {
+    startMathCameraBtn.addEventListener('click', async () => {
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                mathStatus.textContent = '❌ Your browser does not support camera access.';
+                return;
+            }
+
+            mathCameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+
+            if (mathCameraPreview) {
+                mathCameraPreview.srcObject = mathCameraStream;
+                mathCameraPreview.style.display = 'block';
+            }
+
+            if (mathCapturedImage) {
+                mathCapturedImage.style.display = 'none';
+            }
+
+            if (captureMathBtn) {
+                captureMathBtn.disabled = false;
+            }
+
+            if (startMathCameraBtn) {
+                startMathCameraBtn.disabled = true;
+            }
+
+            if (mathStatus) {
+                mathStatus.textContent = '📷 Camera started. Position the math work and click Capture.';
+            }
+
+        } catch (error) {
+            mathStatus.textContent = '❌ Error accessing camera: ' + (error.message || 'Unknown camera error');
+            console.error('Error accessing camera:', error);
+        }
+    });
+}
+
+if (captureMathBtn) {
+    captureMathBtn.addEventListener('click', () => {
+        if (!mathCameraStream || !mathCameraPreview) {
+            mathStatus.textContent = '❌ Camera not available.';
+            return;
+        }
+
+        const canvas = mathCameraCanvas;
+        const video = mathCameraPreview;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        mathCapturedImageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        if (mathCapturedImage) {
+            mathCapturedImage.src = mathCapturedImageData;
+            mathCapturedImage.style.display = 'block';
+        }
+        
+        if (mathCameraPreview) {
+            mathCameraPreview.style.display = 'none';
+        }
+        
+        if (captureMathBtn) {
+            captureMathBtn.disabled = true;
+        }
+        
+        if (analyzeMathBtn) {
+            analyzeMathBtn.disabled = false;
+        }
+        
+        if (retakeMathBtn) {
+            retakeMathBtn.style.display = 'inline-block';
+        }
+        
+        if (mathStatus) {
+            mathStatus.textContent = '✅ Image captured. Click "Analyze Math" to process.';
+        }
+    });
+}
+
+if (retakeMathBtn) {
+    retakeMathBtn.addEventListener('click', () => {
+        if (mathCapturedImage) {
+            mathCapturedImage.style.display = 'none';
+            mathCapturedImage.src = '';
+        }
+        
+        if (mathCameraPreview) {
+            mathCameraPreview.style.display = 'block';
+        }
+        
+        if (captureMathBtn) {
+            captureMathBtn.disabled = false;
+        }
+        
+        if (analyzeMathBtn) {
+            analyzeMathBtn.disabled = true;
+        }
+        
+        if (retakeMathBtn) {
+            retakeMathBtn.style.display = 'none';
+        }
+        
+        mathCapturedImageData = null;
+        
+        if (mathStatus) {
+            mathStatus.textContent = '📷 Ready to capture again.';
+        }
+    });
+}
+
+function stopMathCamera() {
+    if (mathCameraStream) {
+        mathCameraStream.getTracks().forEach(track => track.stop());
+        mathCameraStream = null;
+    }
+    
+    if (startMathCameraBtn) {
+        startMathCameraBtn.disabled = false;
+    }
+}
+
+if (analyzeMathBtn) {
+    analyzeMathBtn.addEventListener('click', () => {
+        analyzeMathWork();
+    });
+}
+
+async function analyzeMathWork() {
+    if (!mathCapturedImageData) {
+        mathStatus.textContent = '❌ No image captured. Please capture an image first.';
+        return;
+    }
+
+    const studentName = studentNameInput ? studentNameInput.value.trim() : 'Student';
+    if (!studentName) {
+        mathStatus.textContent = '❌ Please enter the student name.';
+        return;
+    }
+
+    mathStatus.textContent = '🔄 Analyzing mathematical handwriting using YOLOv8 + TrOCR...';
+    mathResults.style.display = 'block';
+    mathResults.innerHTML = '<div class="loading-spinner">Processing...</div>';
+
+    try {
+        // Convert base64 to blob
+        const response = await fetch(mathCapturedImageData);
+        const blob = await response.blob();
+        
+        const formData = new FormData();
+        formData.append('image', blob, 'math_work.jpg');
+        formData.append('student_name', studentName);
+
+        console.log('Sending mathematical analysis request...');
+        console.log('Image blob size:', blob.size);
+        console.log('Student name:', studentName);
+
+        const apiResponse = await fetch('/api/math/analyze', {
+            method: 'POST',
+            body: formData,
+        });
+
+        console.log('Response status:', apiResponse.status);
+        
+        const data = await apiResponse.json();
+        console.log('Response data:', data);
+
+        if (!apiResponse.ok || !data.success) {
+            throw new Error(data.error || 'Mathematical analysis failed.');
+        }
+
+        // Generate assessment card
+        generateMathAssessmentCard(data);
+        
+        mathStatus.textContent = '✅ Mathematical analysis complete.';
+    } catch (error) {
+        mathStatus.textContent = '❌ ' + (error.message || 'Unable to analyze mathematical handwriting right now.');
+        console.error('Mathematical analysis failed:', error);
+        mathResults.innerHTML = '';
+    }
+}
+
+function generateMathAssessmentCard(data) {
+    const cardHTML = `
+        <div class="assessment-card">
+            <div class="assessment-card-header">
+                <h3>Mathematical Assessment Results</h3>
+                <div class="student-info">
+                    <span><strong>Student:</strong> ${data.student_name}</span>
+                    <span><strong>Date:</strong> ${data.timestamp}</span>
+                </div>
+            </div>
+            <div class="assessment-card-body">
+                <div class="math-problems-grid">
+                    ${data.expressions.map(exp => `
+                        <div class="math-problem ${exp.is_correct ? 'correct' : 'incorrect'}">
+                            <div class="expression">${exp.expression}</div>
+                            <div class="status-icon">${exp.is_correct ? '✓' : '✗'}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="ai-analysis-section">
+                    <h4>AI Analysis Results</h4>
+                    
+                    <div class="analysis-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">OCR Confidence</div>
+                            <div class="stat-value">${data.ocr_confidence}%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Problems Analyzed</div>
+                            <div class="stat-value">${data.problems_analyzed}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Correct Answers</div>
+                            <div class="stat-value">${data.correct_answers}/${data.problems_analyzed}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Accuracy</div>
+                            <div class="stat-value">${data.accuracy_percentage}%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="primary-error">
+                        <div class="error-label">Primary Error:</div>
+                        <div>${data.primary_error}</div>
+                    </div>
+                    
+                    ${data.error_breakdown.length > 0 ? `
+                    <div class="error-breakdown">
+                        <h5>Error Breakdown:</h5>
+                        ${data.error_breakdown.map(error => `
+                            <div class="error-item">
+                                <div class="expression">${error.expression}</div>
+                                <div class="pattern">${error.pattern_description}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+                    
+                    <div class="ai-insight">
+                        <h5>AI Insight:</h5>
+                        <p>${data.ai_insight}</p>
+                    </div>
+                    
+                    <div class="recommendations">
+                        <h5>Recommendations:</h5>
+                        <ul>
+                            ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    mathResults.innerHTML = cardHTML;
 }
