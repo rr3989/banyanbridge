@@ -79,7 +79,6 @@ app.instance_relative_config = False
 properties_config = load_config_from_properties()
 
 # Configuration
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', properties_config.get('SECRET_KEY', 'dev-secret-key-change-in-production'))
 app.config['ENABLE_LOGIN_BUTTON'] = os.environ.get('ENABLE_LOGIN_BUTTON', properties_config.get('ENABLE_LOGIN_BUTTON', 'false')).lower() in ['true', 'on', '1']
 
 # Database configuration - prefer PostgreSQL when available, otherwise SQLite locally

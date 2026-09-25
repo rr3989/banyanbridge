@@ -13,7 +13,6 @@
     }
   ],
   "env": {
-    "SECRET_KEY": "@secret_key",
     "DATABASE_URL": "@database_url",
     "ENABLE_LOGIN_BUTTON": "true"
   }
