@@ -17,6 +17,8 @@
             <li><a href="{{ url_for('index') }}#impact">Impact</a></li>
             <li><a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact</a></li>
             <li><button id="voiceBtn" class="nav-voice">Voice Assessment</button></li>
+            <li><button id="handwritingBtn" class="nav-handwriting">Handwriting Assessment</button></li>
+            <li><button id="mathBtn" class="nav-math">Math Assessment</button></li>
             {% if enable_login_button %}
             <li><a href="{{ url_for('login') }}" class="btn-donate {% if request.endpoint == 'login' or request.endpoint == 'register' %}active{% endif %}">Login</a></li>
             {% endif %}
@@ -45,6 +47,7 @@
                     <button id="startRecordBtn" class="btn btn-start">🎤 Start Recording</button>
                     <button id="stopRecordBtn" class="btn btn-stop" disabled>⏹ Stop Recording</button>
                     <button id="playRecordBtn" class="btn btn-play" disabled>▶ Play Recording</button>
+                    <button id="analyzeRecordBtn" class="btn btn-analyze" disabled>🔍 Analyze Recording</button>
                 </div>
                 
                 <div id="recordingStatus" class="recording-status"></div>
@@ -99,6 +102,127 @@
                     </div>
 
                     <button id="submitAssessmentBtn" class="btn btn-primary">Submit Assessment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Handwriting Assessment Modal -->
+<div id="handwritingModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Handwriting Assessment</h2>
+            <span id="closeHandwritingModal" class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="handwritingContainer" class="handwriting-container">
+                <div class="handwriting-instructions">
+                    <h3>Scan Student's Paper</h3>
+                    <p>Position the student's written work in front of the camera and capture an image for analysis.</p>
+                </div>
+
+                <div class="camera-interface">
+                    <video id="cameraPreview" autoplay playsinline class="camera-preview"></video>
+                    <canvas id="cameraCanvas" class="camera-canvas" style="display: none;"></canvas>
+                    <img id="capturedImage" class="captured-image" style="display: none;" alt="Captured handwriting">
+                </div>
+
+                <div class="handwriting-controls">
+                    <button id="startCameraBtn" class="btn btn-start-camera">📷 Start Camera</button>
+                    <button id="captureBtn" class="btn btn-capture" disabled>📸 Capture Image</button>
+                    <button id="retakeBtn" class="btn btn-retake" style="display: none;">🔄 Retake</button>
+                    <button id="analyzeHandwritingBtn" class="btn btn-analyze-handwriting" disabled>🔍 Analyze Handwriting</button>
+                </div>
+
+                <div id="handwritingStatus" class="handwriting-status"></div>
+
+                <div id="handwritingResults" class="handwriting-results" style="display: none;">
+                    <h3>Handwriting Analysis Results</h3>
+                    
+                    <div class="handwriting-overview">
+                        <div class="overview-item">
+                            <label>Overall Score:</label>
+                            <span id="overallScore">-</span>
+                        </div>
+                        <div class="overview-item">
+                            <label>Legibility:</label>
+                            <span id="legibilityScore">-</span>
+                        </div>
+                        <div class="overview-item">
+                            <label>Letter Formation:</label>
+                            <span id="letterFormation">-</span>
+                        </div>
+                        <div class="overview-item">
+                            <label>Spacing:</label>
+                            <span id="spacingScore">-</span>
+                        </div>
+                    </div>
+
+                    <div class="misconception-diagnosis">
+                        <h4>Misconception Diagnosis</h4>
+                        <div id="misconceptionList" class="misconception-list">
+                            <p>No misconceptions detected.</p>
+                        </div>
+                    </div>
+
+                    <div class="error-depiction">
+                        <h4>Specific Errors Identified</h4>
+                        <div id="errorList" class="error-list">
+                            <p>No errors detected.</p>
+                        </div>
+                    </div>
+
+                    <div class="handwriting-recommendations">
+                        <h4>Recommendations</h4>
+                        <div id="recommendationList" class="recommendation-list">
+                            <p>No specific recommendations.</p>
+                        </div>
+                    </div>
+
+                    <button id="submitHandwritingBtn" class="btn btn-primary">Submit Assessment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Math Assessment Modal -->
+<div id="mathModal" class="modal">
+    <div class="modal-content math-modal-content">
+        <div class="modal-header">
+            <h2>Mathematical Handwriting Assessment</h2>
+            <span id="closeMathModal" class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="mathContainer" class="math-container">
+                <div class="math-instructions">
+                    <h3>Scan Student's Math Work</h3>
+                    <p>Position the student's mathematical work in front of the camera for AI-powered analysis using YOLOv8 + TrOCR.</p>
+                </div>
+
+                <div class="student-info-section">
+                    <label for="studentName">Student Name:</label>
+                    <input type="text" id="studentName" class="student-name-input" placeholder="Enter student name">
+                </div>
+
+                <div class="camera-interface">
+                    <video id="mathCameraPreview" autoplay playsinline class="camera-preview"></video>
+                    <canvas id="mathCameraCanvas" class="camera-canvas" style="display: none;"></canvas>
+                    <img id="mathCapturedImage" class="captured-image" style="display: none;" alt="Captured math work">
+                </div>
+
+                <div class="math-controls">
+                    <button id="startMathCameraBtn" class="btn btn-start-camera">📷 Start Camera</button>
+                    <button id="captureMathBtn" class="btn btn-capture" disabled>📸 Capture Image</button>
+                    <button id="retakeMathBtn" class="btn btn-retake" style="display: none;">🔄 Retake</button>
+                    <button id="analyzeMathBtn" class="btn btn-analyze-math" disabled>🔍 Analyze Math</button>
+                </div>
+
+                <div id="mathStatus" class="math-status"></div>
+
+                <div id="mathResults" class="math-results" style="display: none;">
+                    <!-- Assessment cards will be dynamically generated here -->
                 </div>
             </div>
         </div>

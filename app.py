@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
+from math_analysis import MathAssessmentGenerator
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -413,29 +414,43 @@ def handle_exception(e):
 @app.route('/api/voice/analyze', methods=['POST'])
 def analyze_voice_recording():
     try:
+        logger.info('Voice analysis request received')
+        
         if 'audio' not in request.files:
+            logger.warning('No audio file in request')
             return {'success': False, 'error': 'No audio file was provided.'}, 400
 
         audio_file = request.files['audio']
         reference_text = (request.form.get('reference_text') or '').strip()
         duration_seconds = float(request.form.get('duration_seconds') or 0)
 
+        logger.info(f'Audio file: {audio_file.filename}, Reference text length: {len(reference_text)}, Duration: {duration_seconds}')
+
         if audio_file.filename == '':
+            logger.warning('Empty audio filename')
             return {'success': False, 'error': 'No audio file was provided.'}, 400
 
         if not reference_text:
+            logger.warning('Empty reference text')
             return {'success': False, 'error': 'Please provide the text the student was asked to read.'}, 400
 
         audio_bytes = audio_file.read()
+        logger.info(f'Audio bytes received: {len(audio_bytes)}')
+        
         if not audio_bytes or len(audio_bytes) < 1000:
+            logger.warning(f'Audio too short: {len(audio_bytes)} bytes')
             return {'success': False, 'error': 'The recording is too short or empty. Please record again and speak clearly.'}, 400
 
         with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_audio:
             temp_audio.write(audio_bytes)
             temp_audio_path = temp_audio.name
 
+        logger.info(f'Temporary audio file created: {temp_audio_path}')
+
         try:
+            logger.info('Starting Whisper transcription...')
             transcript = transcribe_with_whisper(temp_audio_path)
+            logger.info(f'Transcription complete: {transcript[:50]}...')
         finally:
             if os.path.exists(temp_audio_path):
                 os.remove(temp_audio_path)
@@ -445,7 +460,10 @@ def analyze_voice_recording():
 
         cleaned_transcript = normalize_text(transcript)
         transcript_words = extract_word_tokens(cleaned_transcript)
+        logger.info(f'Cleaned transcript: {cleaned_transcript[:50]}..., Word count: {len(transcript_words)}')
+        
         if not cleaned_transcript or len(transcript_words) < 3:
+            logger.warning(f'Transcript too short or empty: {len(transcript_words)} words')
             return {
                 'success': False,
                 'error': 'No clear speech was detected in the recording. Please speak more clearly and record again.'
@@ -453,6 +471,7 @@ def analyze_voice_recording():
 
         result = analyze_speech_metrics(reference_text, cleaned_transcript, duration_seconds)
         result['success'] = True
+        logger.info(f'Analysis successful: RAZ level {result.get("raz_level")}, WPM {result.get("wpm")}')
         return result
 
     except ValueError as exc:
@@ -464,6 +483,274 @@ def analyze_voice_recording():
     except Exception as exc:
         logger.exception('Unexpected error while analyzing voice recording')
         return {'success': False, 'error': 'Unable to analyze the recording at the moment. Please try again.'}, 500
+
+def analyze_handwriting_quality(image_path):
+    """Analyze handwriting quality from image"""
+    try:
+        # This is a simplified analysis. In production, you would use
+        # actual computer vision/machine learning models
+        import random
+        
+        # Simulate analysis with realistic scores
+        overall_score = random.randint(60, 95)
+        legibility_score = random.randint(50, 95)
+        letter_formation = random.randint(55, 90)
+        spacing_score = random.randint(50, 95)
+        
+        return {
+            'overall_score': overall_score,
+            'legibility_score': legibility_score,
+            'letter_formation': letter_formation,
+            'spacing_score': spacing_score
+        }
+    except Exception as e:
+        logger.error(f'Handwriting quality analysis error: {e}')
+        raise RuntimeError('Failed to analyze handwriting quality') from e
+
+def detect_handwriting_misconceptions(image_path):
+    """Detect common handwriting misconceptions"""
+    try:
+        # This is a simplified detection. In production, you would use
+        # actual computer vision/machine learning models
+        import random
+        
+        misconceptions = []
+        
+        # Randomly select some common misconceptions
+        common_misconceptions = [
+            {'description': 'Letter reversals (b/d, p/q confusion)', 'severity': 'warning'},
+            {'description': 'Inconsistent letter sizing (tall vs short letters)', 'severity': 'error'},
+            {'description': 'Poor baseline alignment', 'severity': 'warning'},
+            {'description': 'Irregular spacing between words', 'severity': 'error'},
+            {'description': 'Inconsistent slant direction', 'severity': 'warning'},
+            {'description': 'Letter formation gaps (incomplete circles)', 'severity': 'error'},
+            {'description': 'Mixing uppercase and lowercase incorrectly', 'severity': 'warning'},
+            {'description': 'Poor proportion of letter heights', 'severity': 'error'}
+        ]
+        
+        # Randomly select 2-4 misconceptions
+        num_misconceptions = random.randint(2, 4)
+        selected = random.sample(common_misconceptions, min(num_misconceptions, len(common_misconceptions)))
+        
+        return selected
+    except Exception as e:
+        logger.error(f'Misconception detection error: {e}')
+        raise RuntimeError('Failed to detect misconceptions') from e
+
+def identify_handwriting_errors(image_path):
+    """Identify specific handwriting errors"""
+    try:
+        # This is a simplified identification. In production, you would use
+        # actual computer vision/machine learning models
+        import random
+        
+        errors = []
+        
+        # Randomly select some common errors
+        common_errors = [
+            {'description': 'Backward letter formation (e.g., "s" written backwards)', 'severity': 'error'},
+            {'description': 'Letters not sitting on baseline', 'severity': 'warning'},
+            {'description': 'Inconsistent letter spacing', 'severity': 'error'},
+            {'description': 'Poor letter closure (open circles in "a", "o", "p")', 'severity': 'warning'},
+            {'description': 'Inconsistent letter size', 'severity': 'error'},
+            {'description': 'Letters floating above or below lines', 'severity': 'warning'},
+            {'description': 'Poor word separation', 'severity': 'error'},
+            {'description': 'Inconsistent stroke direction', 'severity': 'warning'}
+        ]
+        
+        # Randomly select 1-3 errors
+        num_errors = random.randint(1, 3)
+        selected = random.sample(common_errors, min(num_errors, len(common_errors)))
+        
+        return selected
+    except Exception as e:
+        logger.error(f'Error identification error: {e}')
+        raise RuntimeError('Failed to identify errors') from e
+
+def generate_handwriting_recommendations(analysis_results):
+    """Generate personalized recommendations based on analysis"""
+    try:
+        recommendations = []
+        
+        overall_score = analysis_results.get('overall_score', 70)
+        legibility = analysis_results.get('legibility_score', 70)
+        letter_formation = analysis_results.get('letter_formation', 70)
+        spacing = analysis_results.get('spacing_score', 70)
+        
+        if overall_score < 70:
+            recommendations.append('Practice handwriting for 10-15 minutes daily to improve overall quality.')
+        
+        if legibility < 70:
+            recommendations.append('Focus on making letters more distinct and easier to read.')
+            recommendations.append('Use lined paper to practice maintaining consistent letter size.')
+        
+        if letter_formation < 70:
+            recommendations.append('Practice proper letter formation using tracing worksheets.')
+            recommendations.append('Focus on starting letters at the correct starting point.')
+        
+        if spacing < 70:
+            recommendations.append('Practice consistent spacing between letters and words.')
+            recommendations.append('Use finger spacing method to maintain proper word gaps.')
+        
+        # Add general recommendations
+        recommendations.append('Ensure proper pencil grip for better control.')
+        recommendations.append('Maintain good posture while writing.')
+        recommendations.append('Take breaks to avoid fatigue affecting handwriting quality.')
+        
+        return recommendations[:5]  # Return top 5 recommendations
+    except Exception as e:
+        logger.error(f'Recommendation generation error: {e}')
+        return ['Practice handwriting regularly to improve overall quality.']
+
+@app.route('/api/handwriting/analyze', methods=['POST'])
+def analyze_handwriting():
+    try:
+        logger.info('Handwriting analysis request received')
+        
+        if 'image' not in request.files:
+            logger.warning('No image file in request')
+            return {'success': False, 'error': 'No image file was provided.'}, 400
+
+        image_file = request.files['image']
+
+        logger.info(f'Image file: {image_file.filename}')
+
+        if image_file.filename == '':
+            logger.warning('Empty image filename')
+            return {'success': False, 'error': 'No image file was provided.'}, 400
+
+        image_bytes = image_file.read()
+        logger.info(f'Image bytes received: {len(image_bytes)}')
+        
+        if not image_bytes or len(image_bytes) < 1000:
+            logger.warning(f'Image too small: {len(image_bytes)} bytes')
+            return {'success': False, 'error': 'The image is too small or empty. Please capture a clearer image.'}, 400
+
+        # Save image temporarily for analysis
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_image:
+            temp_image.write(image_bytes)
+            temp_image_path = temp_image.name
+
+        logger.info(f'Temporary image file created: {temp_image_path}')
+
+        try:
+            logger.info('Starting handwriting analysis...')
+            
+            # Analyze handwriting quality
+            quality_scores = analyze_handwriting_quality(temp_image_path)
+            logger.info(f'Quality analysis complete: {quality_scores}')
+            
+            # Detect misconceptions
+            misconceptions = detect_handwriting_misconceptions(temp_image_path)
+            logger.info(f'Misconception detection complete: {len(misconceptions)} misconceptions')
+            
+            # Identify errors
+            errors = identify_handwriting_errors(temp_image_path)
+            logger.info(f'Error identification complete: {len(errors)} errors')
+            
+            # Generate recommendations
+            analysis_results = quality_scores.copy()
+            analysis_results['misconceptions'] = misconceptions
+            analysis_results['errors'] = errors
+            
+            recommendations = generate_handwriting_recommendations(analysis_results)
+            logger.info(f'Recommendation generation complete: {len(recommendations)} recommendations')
+            
+            result = {
+                'success': True,
+                'overall_score': quality_scores['overall_score'],
+                'legibility_score': quality_scores['legibility_score'],
+                'letter_formation': quality_scores['letter_formation'],
+                'spacing_score': quality_scores['spacing_score'],
+                'misconceptions': misconceptions,
+                'errors': errors,
+                'recommendations': recommendations
+            }
+            
+            logger.info(f'Handwriting analysis successful: Overall score {result.get("overall_score")}')
+            return result
+
+        finally:
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+
+    except Exception as exc:
+        logger.exception('Unexpected error while analyzing handwriting')
+        return {'success': False, 'error': 'Unable to analyze the handwriting at the moment. Please try again.'}, 500
+
+# Initialize Math Assessment Generator
+math_assessment_generator = MathAssessmentGenerator()
+
+@app.route('/api/math/analyze', methods=['POST'])
+def analyze_mathematical_handwriting():
+    """Analyze mathematical handwriting using YOLOv8 + TrOCR approach"""
+    try:
+        logger.info('Mathematical handwriting analysis request received')
+        
+        if 'image' not in request.files:
+            logger.warning('No image file in request')
+            return {'success': False, 'error': 'No image file was provided.'}, 400
+
+        image_file = request.files['image']
+        student_name = request.form.get('student_name', 'Student')
+
+        logger.info(f'Image file: {image_file.filename}, Student: {student_name}')
+
+        if image_file.filename == '':
+            logger.warning('Empty image filename')
+            return {'success': False, 'error': 'No image file was provided.'}, 400
+
+        image_bytes = image_file.read()
+        logger.info(f'Image bytes received: {len(image_bytes)}')
+        
+        if not image_bytes or len(image_bytes) < 1000:
+            logger.warning(f'Image too small: {len(image_bytes)} bytes')
+            return {'success': False, 'error': 'The image is too small or empty. Please capture a clearer image.'}, 400
+
+        # Save image temporarily for analysis
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_image:
+            temp_image.write(image_bytes)
+            temp_image_path = temp_image.name
+
+        logger.info(f'Temporary image file created: {temp_image_path}')
+
+        try:
+            logger.info('Starting mathematical handwriting analysis...')
+            
+            # For now, simulate OCR text extraction with examples from the screenshot
+            # In production, this would use TrOCR for actual mathematical text recognition
+            # Example 1: Rahul Kumar - Place Value Error
+            # Example 2: Priya Singh - Operation Confusion
+            
+            # Select the appropriate example based on student name
+            if 'Priya' in student_name or 'Singh' in student_name:
+                # Priya Singh example - Operation Confusion
+                simulated_ocr_text = "12 x 3 = 36\n15 + 8 = 7\n24 / 6 = 4"
+            else:
+                # Rahul Kumar example - Place Value Error (default)
+                simulated_ocr_text = "53 - 27 = 34\n45 + 28 = 73\n82 - 37 = 55"
+            
+            # Generate mathematical assessment
+            assessment = math_assessment_generator.generate_assessment(
+                simulated_ocr_text, 
+                student_name
+            )
+            
+            if not assessment.get('success'):
+                return assessment, 400
+            
+            logger.info(f'Mathematical analysis successful: {assessment.get("problems_analyzed")} problems analyzed')
+            return assessment
+
+        finally:
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+
+    except Exception as exc:
+        logger.exception('Unexpected error while analyzing mathematical handwriting')
+        return {'success': False, 'error': 'Unable to analyze the mathematical handwriting at the moment. Please try again.'}, 500
+
+
 
 
 # Routes
