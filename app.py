@@ -45,27 +45,25 @@ def ensure_ffmpeg_available():
         logger.error("imageio_ffmpeg bundled binary not found.")
         return None
 
-    # 3. Create a clean /tmp/bin folder to host the 'ffmpeg' symlink/copy
-    # (/tmp is guaranteed writable on Vercel and AWS Lambda)
-    target_dir = os.path.join(tempfile.gettempdir(), 'bin')
+    # 3. Explicitly use /tmp/bin (Vercel/AWS Lambda writable directory)
+    target_dir = '/tmp/bin' if not sys.platform.startswith('win') else os.path.join(tempfile.gettempdir(), 'bin')
     os.makedirs(target_dir, exist_ok=True)
 
-    # Determine executable name based on OS (.exe for Windows, no extension for Linux/macOS)
     executable_name = 'ffmpeg.exe' if sys.platform.startswith('win') else 'ffmpeg'
     ffmpeg_target = os.path.join(target_dir, executable_name)
 
-    # Create symlink or copy if it doesn't already exist
+    # 4. Copy the binary to /tmp/bin and make it executable
     if not os.path.exists(ffmpeg_target):
         try:
-            os.symlink(bundled_exe, ffmpeg_target)
-        except (OSError, AttributeError):
+            # Copy file directly into /tmp so permissions can be safely modified
             shutil.copy2(bundled_exe, ffmpeg_target)
+            if not sys.platform.startswith('win'):
+                os.chmod(ffmpeg_target, 0o755)
+        except Exception as e:
+            logger.error(f"Failed to copy or set permissions for ffmpeg: {e}")
+            return None
 
-        # Ensure execution permissions on Linux/macOS
-        if not sys.platform.startswith('win'):
-            os.chmod(ffmpeg_target, 0o755)
-
-    # 4. Prepend target directory to PATH environment variable
+    # 5. Prepend target directory to PATH environment variable
     if target_dir not in os.environ.get('PATH', ''):
         os.environ['PATH'] = target_dir + os.pathsep + os.environ.get('PATH', '')
 
