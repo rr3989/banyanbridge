@@ -276,7 +276,7 @@ class MathAssessmentGenerator:
                 'error': f'Failed to generate assessment: {str(e)}'
             }
     
-    def _get_primary_error_type(self, error_types: List[str]) -> str:
+    def get_primary_error_type(self, error_types: List[str]) -> str:
         """Determine the primary error type from the list of errors"""
         if not error_types:
             return 'No errors detected'
@@ -301,7 +301,7 @@ class MathAssessmentGenerator:
         
         return error_descriptions.get(primary_error, primary_error)
     
-    def _generate_ai_insight(self, expressions: List[Dict], primary_error: str) -> str:
+    def generate_ai_insight(self, expressions: List[Dict], primary_error: str) -> str:
         """Generate AI insight based on analysis"""
         incorrect_expressions = [exp for exp in expressions if not exp['is_correct']]
         
@@ -319,7 +319,7 @@ class MathAssessmentGenerator:
         else:
             return "Student shows mixed understanding of mathematical concepts with specific areas needing targeted practice and reinforcement."
     
-    def _generate_recommendations(self, primary_error: str, expressions: List[Dict]) -> List[str]:
+    def generate_recommendations(self, primary_error: str, expressions: List[Dict]) -> List[str]:
         """Generate personalized recommendations based on error analysis"""
         recommendations = []
         

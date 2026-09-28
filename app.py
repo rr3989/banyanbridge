@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
 from math_analysis import MathAssessmentGenerator
+from real_handwriting_analysis import RealHandwritingAnalyzer
+from real_math_analysis import RealMathExpressionAnalyzer
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -523,95 +525,6 @@ def analyze_voice_recording():
         logger.exception('Unexpected error while analyzing voice recording')
         return {'success': False, 'error': 'Unable to analyze the recording at the moment. Please try again.'}, 500
 
-def analyze_handwriting_quality(image_path):
-    """Analyze handwriting quality from image"""
-    try:
-        import random
-        overall_score = random.randint(60, 95)
-        legibility_score = random.randint(50, 95)
-        letter_formation = random.randint(55, 90)
-        spacing_score = random.randint(50, 95)
-        
-        return {
-            'overall_score': overall_score,
-            'legibility_score': legibility_score,
-            'letter_formation': letter_formation,
-            'spacing_score': spacing_score
-        }
-    except Exception as e:
-        logger.error(f'Handwriting quality analysis error: {e}')
-        raise RuntimeError('Failed to analyze handwriting quality') from e
-
-def detect_handwriting_misconceptions(image_path):
-    """Detect common handwriting misconceptions"""
-    try:
-        import random
-        common_misconceptions = [
-            {'description': 'Letter reversals (b/d, p/q confusion)', 'severity': 'warning'},
-            {'description': 'Inconsistent letter sizing (tall vs short letters)', 'severity': 'error'},
-            {'description': 'Poor baseline alignment', 'severity': 'warning'},
-            {'description': 'Irregular spacing between words', 'severity': 'error'},
-            {'description': 'Inconsistent slant direction', 'severity': 'warning'},
-            {'description': 'Letter formation gaps (incomplete circles)', 'severity': 'error'},
-            {'description': 'Mixing uppercase and lowercase incorrectly', 'severity': 'warning'},
-            {'description': 'Poor proportion of letter heights', 'severity': 'error'}
-        ]
-        num_misconceptions = random.randint(2, 4)
-        return random.sample(common_misconceptions, min(num_misconceptions, len(common_misconceptions)))
-    except Exception as e:
-        logger.error(f'Misconception detection error: {e}')
-        raise RuntimeError('Failed to detect misconceptions') from e
-
-def identify_handwriting_errors(image_path):
-    """Identify specific handwriting errors"""
-    try:
-        import random
-        common_errors = [
-            {'description': 'Backward letter formation (e.g., "s" written backwards)', 'severity': 'error'},
-            {'description': 'Letters not sitting on baseline', 'severity': 'warning'},
-            {'description': 'Inconsistent letter spacing', 'severity': 'error'},
-            {'description': 'Poor letter closure (open circles in "a", "o", "p")', 'severity': 'warning'},
-            {'description': 'Inconsistent letter size', 'severity': 'error'},
-            {'description': 'Letters floating above or below lines', 'severity': 'warning'},
-            {'description': 'Poor word separation', 'severity': 'error'},
-            {'description': 'Inconsistent stroke direction', 'severity': 'warning'}
-        ]
-        num_errors = random.randint(1, 3)
-        return random.sample(common_errors, min(num_errors, len(common_errors)))
-    except Exception as e:
-        logger.error(f'Error identification error: {e}')
-        raise RuntimeError('Failed to identify errors') from e
-
-def generate_handwriting_recommendations(analysis_results):
-    """Generate personalized recommendations based on analysis"""
-    try:
-        recommendations = []
-        overall_score = analysis_results.get('overall_score', 70)
-        legibility = analysis_results.get('legibility_score', 70)
-        letter_formation = analysis_results.get('letter_formation', 70)
-        spacing = analysis_results.get('spacing_score', 70)
-        
-        if overall_score < 70:
-            recommendations.append('Practice handwriting for 10-15 minutes daily to improve overall quality.')
-        if legibility < 70:
-            recommendations.append('Focus on making letters more distinct and easier to read.')
-            recommendations.append('Use lined paper to practice maintaining consistent letter size.')
-        if letter_formation < 70:
-            recommendations.append('Practice proper letter formation using tracing worksheets.')
-            recommendations.append('Focus on starting letters at the correct starting point.')
-        if spacing < 70:
-            recommendations.append('Practice consistent spacing between letters and words.')
-            recommendations.append('Use finger spacing method to maintain proper word gaps.')
-        
-        recommendations.append('Ensure proper pencil grip for better control.')
-        recommendations.append('Maintain good posture while writing.')
-        recommendations.append('Take breaks to avoid fatigue affecting handwriting quality.')
-        
-        return recommendations[:5]
-    except Exception as e:
-        logger.error(f'Recommendation generation error: {e}')
-        return ['Practice handwriting regularly to improve overall quality.']
-
 @app.route('/api/handwriting/analyze', methods=['POST'])
 def analyze_handwriting():
     try:
@@ -643,23 +556,48 @@ def analyze_handwriting():
         logger.info(f'Temporary image file created: {temp_image_path}')
 
         try:
-            logger.info('Starting handwriting analysis...')
+            logger.info('Starting handwriting analysis with real computer vision...')
             
-            quality_scores = analyze_handwriting_quality(temp_image_path)
+            # Use real handwriting analyzer
+            # First, extract text using OCR
+            ocr_result = real_handwriting_analyzer.extract_text(temp_image_path)
+            logger.info(f'OCR extraction complete: {ocr_result.get("method", "Unknown")}, confidence: {ocr_result.get("confidence", 0):.1f}%')
+            
+            # Analyze handwriting quality using computer vision
+            quality_scores = real_handwriting_analyzer.analyze_handwriting_quality(
+                temp_image_path, 
+                ocr_result.get('text', '')
+            )
             logger.info(f'Quality analysis complete: {quality_scores}')
             
-            misconceptions = detect_handwriting_misconceptions(temp_image_path)
-            logger.info(f'Misconception detection complete: {len(misconceptions)} misconceptions')
+            # Detect handwriting issues
+            issues = real_handwriting_analyzer.detect_handwriting_issues(
+                temp_image_path, 
+                ocr_result.get('text', '')
+            )
+            logger.info(f'Issue detection complete: {len(issues)} issues')
             
-            errors = identify_handwriting_errors(temp_image_path)
-            logger.info(f'Error identification complete: {len(errors)} errors')
+            # Categorize issues into misconceptions and errors
+            misconceptions = [issue for issue in issues if issue.get('severity') in ['warning', 'error']]
+            errors = [issue for issue in issues if issue.get('severity') == 'error']
             
-            analysis_results = quality_scores.copy()
-            analysis_results['misconceptions'] = misconceptions
-            analysis_results['errors'] = errors
+            # Generate recommendations based on actual analysis
+            recommendations = []
+            if quality_scores['overall_score'] < 70:
+                recommendations.append('Practice handwriting for 10-15 minutes daily to improve overall quality.')
+            if quality_scores['legibility_score'] < 70:
+                recommendations.append('Focus on making letters more distinct and easier to read.')
+            if quality_scores['letter_formation'] < 70:
+                recommendations.append('Practice proper letter formation using tracing worksheets.')
+            if quality_scores['spacing_score'] < 70:
+                recommendations.append('Practice consistent spacing between letters and words.')
             
-            recommendations = generate_handwriting_recommendations(analysis_results)
-            logger.info(f'Recommendation generation complete: {len(recommendations)} recommendations')
+            # Add general recommendations
+            recommendations.extend([
+                'Ensure proper pencil grip for better control.',
+                'Maintain good posture while writing.',
+                'Take breaks to avoid fatigue affecting handwriting quality.'
+            ])
             
             result = {
                 'success': True,
@@ -669,7 +607,9 @@ def analyze_handwriting():
                 'spacing_score': quality_scores['spacing_score'],
                 'misconceptions': misconceptions,
                 'errors': errors,
-                'recommendations': recommendations
+                'recommendations': recommendations[:5],  # Top 5 recommendations
+                'ocr_confidence': ocr_result.get('confidence', 0),
+                'extracted_text': ocr_result.get('text', '')
             }
             
             logger.info(f'Handwriting analysis successful: Overall score {result.get("overall_score")}')
@@ -683,8 +623,10 @@ def analyze_handwriting():
         logger.exception('Unexpected error while analyzing handwriting')
         return {'success': False, 'error': 'Unable to analyze the handwriting at the moment. Please try again.'}, 500
 
-# Initialize Math Assessment Generator
+# Initialize Assessment Generators
 math_assessment_generator = MathAssessmentGenerator()
+real_handwriting_analyzer = RealHandwritingAnalyzer()
+real_math_analyzer = RealMathExpressionAnalyzer()
 
 @app.route('/api/math/analyze', methods=['POST'])
 def analyze_mathematical_handwriting():
@@ -719,22 +661,118 @@ def analyze_mathematical_handwriting():
         logger.info(f'Temporary image file created: {temp_image_path}')
 
         try:
-            logger.info('Starting mathematical handwriting analysis...')
+            logger.info('Starting mathematical handwriting analysis with computer vision...')
             
-            if 'Priya' in student_name or 'Singh' in student_name:
-                simulated_ocr_text = "12 x 3 = 36\n15 + 8 = 7\n24 / 6 = 4"
+            # Use real math analyzer with computer vision for detection
+            # Step 1: Detect mathematical expressions using computer vision
+            detected_expressions = real_math_analyzer.detect_mathematical_expressions(temp_image_path)
+            logger.info(f'Computer vision detected {len(detected_expressions)} potential mathematical regions')
+            
+            # Step 2: Extract text from the FULL image using OCR first (more reliable for handwritten math)
+            from real_handwriting_analysis import RealHandwritingAnalyzer
+            handwriting_analyzer = RealHandwritingAnalyzer()
+            full_ocr_result = handwriting_analyzer.extract_text(temp_image_path)
+            logger.info(f'Full image OCR result: {full_ocr_result}')
+            
+            # Initialize variables for both approaches
+            extracted_texts = []
+            full_ocr_text = full_ocr_result.get('text', '') if full_ocr_result.get('success') else ''
+            
+            # Step 3: Parse mathematical expressions from full OCR text
+            parsed_expressions = []
+            if full_ocr_result.get('success'):
+                full_text = full_ocr_result['text']
+                logger.info(f'Full OCR text: {full_text}')
+                
+                # Try parsing from lines
+                lines = full_text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line:
+                        logger.info(f'Trying to parse line: {line}')
+                        parsed = real_math_analyzer.parse_mathematical_expression(line)
+                        if parsed:
+                            parsed_expressions.append(parsed)
+                            logger.info(f'Successfully parsed: {parsed}')
+                        else:
+                            logger.info(f'Failed to parse line: {line}')
+            
+            # Step 4: If no expressions from full text, try region-based detection
+            if not parsed_expressions:
+                logger.warning('No expressions from full OCR, trying region-based detection')
+                for expr in detected_expressions:
+                    text_result = real_math_analyzer.extract_mathematical_text(expr['cropped_image'])
+                    if text_result.get('success'):
+                        extracted_texts.append({
+                            'text': text_result['text'],
+                            'confidence': text_result['confidence'],
+                            'method': text_result['method'],
+                            'bbox': expr['bbox']
+                        })
+                        logger.info(f'Extracted text from region: {text_result["text"]} (confidence: {text_result["confidence"]:.1f}%, method: {text_result["method"]})')
+                
+                # Parse from region texts
+                for text_info in extracted_texts:
+                    parsed = real_math_analyzer.parse_mathematical_expression(text_info['text'])
+                    if parsed:
+                        parsed_expressions.append(parsed)
+            
+            logger.info(f'Successfully parsed {len(parsed_expressions)} mathematical expressions')
+            
+            # Step 5: Analyze spatial structure
+            spatial_analysis = real_math_analyzer.analyze_spatial_structure(temp_image_path, detected_expressions)
+            logger.info(f'Spatial analysis complete: {spatial_analysis}')
+            
+            # Step 6: Generate comprehensive assessment
+            if not parsed_expressions:
+                # No expressions found - return error
+                logger.warning('No mathematical expressions parsed from any method')
+                return {
+                    'success': False,
+                    'error': 'No mathematical expressions detected in the image. Please ensure the image contains clear handwritten mathematical expressions with operators (+, -, ×, ÷) and equals signs (=).'
+                }, 400
             else:
-                simulated_ocr_text = "53 - 27 = 34\n45 + 28 = 73\n82 - 37 = 55"
+                # Create assessment from real analysis
+                total_problems = len(parsed_expressions)
+                correct_count = sum(1 for exp in parsed_expressions if exp['is_correct'])
+                accuracy = (correct_count / total_problems) * 100 if total_problems > 0 else 0
+                
+                # Identify primary error type
+                error_types = [exp['error_type'] for exp in parsed_expressions if not exp['is_correct']]
+                primary_error = math_assessment_generator.get_primary_error_type(error_types)
+                
+                # Generate AI insights
+                ai_insight = math_assessment_generator.generate_ai_insight(parsed_expressions, primary_error)
+                
+                # Generate recommendations
+                recommendations = math_assessment_generator.generate_recommendations(primary_error, parsed_expressions)
+                
+                # Calculate OCR confidence
+                if extracted_texts:
+                    ocr_confidence = sum(text['confidence'] for text in extracted_texts) / len(extracted_texts)
+                else:
+                    ocr_confidence = full_ocr_result.get('confidence', 75.0) if full_ocr_result.get('success') else 75.0
+                extracted_texts_list = [text['text'] for text in extracted_texts] if extracted_texts else [full_ocr_result.get('text', '')] if full_ocr_result.get('success') else []
+                
+                assessment = {
+                    'success': True,
+                    'student_name': student_name,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'ocr_confidence': round(ocr_confidence, 1),
+                    'problems_analyzed': total_problems,
+                    'correct_answers': correct_count,
+                    'accuracy_percentage': round(accuracy, 1),
+                    'primary_error': primary_error,
+                    'error_breakdown': [exp for exp in parsed_expressions if not exp['is_correct']],
+                    'spatial_analysis': spatial_analysis,
+                    'ai_insight': ai_insight,
+                    'recommendations': recommendations,
+                    'expressions': parsed_expressions,
+                    'extracted_texts': extracted_texts_list,
+                    'analysis_method': 'Computer Vision + OCR'
+                }
             
-            assessment = math_assessment_generator.generate_assessment(
-                simulated_ocr_text, 
-                student_name
-            )
-            
-            if not assessment.get('success'):
-                return assessment, 400
-            
-            logger.info(f'Mathematical analysis successful: {assessment.get("problems_analyzed")} problems analyzed')
+            logger.info(f'Mathematical analysis successful: {assessment.get("problems_analyzed")} problems analyzed, method: {assessment.get("analysis_method", "Unknown")}')
             return assessment
 
         finally:

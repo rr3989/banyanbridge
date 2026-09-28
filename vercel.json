@@ -12,7 +12,4 @@
       "dest": "/api/index.py"
     }
   ],
-  "env": {
-    "ENABLE_LOGIN_BUTTON": "true"
-  }
 }
