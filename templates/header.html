@@ -135,6 +135,11 @@
                     <button id="analyzeHandwritingBtn" class="btn btn-analyze-handwriting" disabled>🔍 Analyze Handwriting</button>
                 </div>
 
+                <div id="capturedTextSection" class="captured-text-section" style="display: none;">
+                    <h4>Captured Text</h4>
+                    <textarea id="capturedTextArea" class="captured-text-area" readonly placeholder="Captured text will appear here after analysis..."></textarea>
+                </div>
+
                 <div id="handwritingStatus" class="handwriting-status"></div>
 
                 <div id="handwritingResults" class="handwriting-results" style="display: none;">
@@ -199,11 +204,6 @@
                 <div class="math-instructions">
                     <h3>Scan Student's Math Work</h3>
                     <p>Position the student's mathematical work in front of the camera for AI-powered analysis using YOLOv8 + TrOCR.</p>
-                </div>
-
-                <div class="student-info-section">
-                    <label for="studentName">Student Name:</label>
-                    <input type="text" id="studentName" class="student-name-input" placeholder="Enter student name">
                 </div>
 
                 <div class="camera-interface">

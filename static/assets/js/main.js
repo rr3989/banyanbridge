@@ -294,6 +294,8 @@ const cameraCanvas = document.getElementById('cameraCanvas');
 const capturedImage = document.getElementById('capturedImage');
 const handwritingStatus = document.getElementById('handwritingStatus');
 const handwritingResults = document.getElementById('handwritingResults');
+const capturedTextSection = document.getElementById('capturedTextSection');
+const capturedTextArea = document.getElementById('capturedTextArea');
 
 // Math Assessment Variables
 const mathBtn = document.getElementById('mathBtn');
@@ -308,7 +310,6 @@ const mathCameraCanvas = document.getElementById('mathCameraCanvas');
 const mathCapturedImage = document.getElementById('mathCapturedImage');
 const mathStatus = document.getElementById('mathStatus');
 const mathResults = document.getElementById('mathResults');
-const studentNameInput = document.getElementById('studentName');
 
 let cameraStream = null;
 let capturedImageData = null;
@@ -582,6 +583,14 @@ function resetHandwritingAssessment() {
         handwritingResults.style.display = 'none';
     }
     
+    if (capturedTextSection) {
+        capturedTextSection.style.display = 'none';
+    }
+
+    if (capturedTextArea) {
+        capturedTextArea.value = '';
+    }
+    
     if (handwritingStatus) {
         handwritingStatus.textContent = '';
     }
@@ -755,7 +764,9 @@ async function analyzeHandwriting() {
     }
 
     handwritingStatus.textContent = '🔄 Analyzing handwriting...';
-    handwritingResults.style.display = 'block';
+    // Hide results section during analysis
+    handwritingResults.style.display = 'none';
+    capturedTextSection.style.display = 'none';
 
     try {
         // Convert base64 to blob
@@ -780,6 +791,12 @@ async function analyzeHandwriting() {
 
         if (!apiResponse.ok || !data.success) {
             throw new Error(data.error || 'Handwriting analysis failed.');
+        }
+
+        // Display captured text if available
+        if (data.extracted_text) {
+            capturedTextSection.style.display = 'block';
+            capturedTextArea.value = data.extracted_text;
         }
 
         // Display results
@@ -818,6 +835,8 @@ async function analyzeHandwriting() {
             recommendationList.innerHTML = '<p>No specific recommendations.</p>';
         }
 
+        // Show results section after analysis is complete
+        handwritingResults.style.display = 'block';
         handwritingStatus.textContent = '✅ Handwriting analysis complete.';
     } catch (error) {
         handwritingStatus.textContent = '❌ ' + (error.message || 'Unable to analyze handwriting right now.');
@@ -897,9 +916,6 @@ function resetMathAssessment() {
         retakeMathBtn.style.display = 'none';
     }
     
-    if (studentNameInput) {
-        studentNameInput.value = '';
-    }
     
     mathCapturedImageData = null;
     stopMathCamera();
@@ -1048,11 +1064,6 @@ async function analyzeMathWork() {
         return;
     }
 
-    const studentName = studentNameInput ? studentNameInput.value.trim() : 'Student';
-    if (!studentName) {
-        mathStatus.textContent = '❌ Please enter the student name.';
-        return;
-    }
 
     mathStatus.textContent = '🔄 Analyzing mathematical handwriting using YOLOv8 + TrOCR...';
     mathResults.style.display = 'block';
@@ -1065,11 +1076,9 @@ async function analyzeMathWork() {
         
         const formData = new FormData();
         formData.append('image', blob, 'math_work.jpg');
-        formData.append('student_name', studentName);
 
         console.log('Sending mathematical analysis request...');
         console.log('Image blob size:', blob.size);
-        console.log('Student name:', studentName);
 
         const apiResponse = await fetch('/api/math/analyze', {
             method: 'POST',
@@ -1102,7 +1111,6 @@ function generateMathAssessmentCard(data) {
             <div class="assessment-card-header">
                 <h3>Mathematical Assessment Results</h3>
                 <div class="student-info">
-                    <span><strong>Student:</strong> ${data.student_name}</span>
                     <span><strong>Date:</strong> ${data.timestamp}</span>
                 </div>
             </div>

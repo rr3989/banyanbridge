@@ -1574,6 +1574,40 @@ img {
     transform: translateY(-2px);
 }
 
+.captured-text-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.captured-text-section h4 {
+    color: #667eea;
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+}
+
+.captured-text-area {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    background: white;
+    color: #333;
+    resize: vertical;
+}
+
+.captured-text-area:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .handwriting-status {
     margin: 20px 0;
     padding: 15px;
