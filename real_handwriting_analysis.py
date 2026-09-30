@@ -1,13 +1,40 @@
 """
 Real Handwriting Analysis Module
-Uses EasyOCR for actual text extraction and computer vision for quality analysis
+Uses Tesseract OCR for text extraction and computer vision for quality analysis
 """
 
-import cv2
-import numpy as np
 import logging
+import os
 from typing import Dict, List, Optional
-from PIL import Image, ImageStat, ImageFilter
+
+# Lazy-load heavy dependencies only when needed
+_cv2 = None
+_np = None
+_PIL = None
+
+def get_cv2():
+    """Lazy import cv2"""
+    global _cv2
+    if _cv2 is None:
+        import cv2
+        _cv2 = cv2
+    return _cv2
+
+def get_np():
+    """Lazy import numpy"""
+    global _np
+    if _np is None:
+        import numpy
+        _np = numpy
+    return _np
+
+def get_PIL():
+    """Lazy import PIL"""
+    global _PIL
+    if _PIL is None:
+        from PIL import Image, ImageStat, ImageFilter
+        _PIL = (Image, ImageStat, ImageFilter)
+    return _PIL
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +47,55 @@ class RealHandwritingAnalyzer:
         try:
             import pytesseract
             from PIL import Image
-            # Test if tesseract is available
-            try:
-                pytesseract.get_tesseract_version()
-                self.use_tesseract = True
-                logger.info("Tesseract OCR initialized successfully")
-            except:
-                logger.warning("Tesseract not found, trying EasyOCR")
-                self._init_easyocr()
+            import shutil
+            import os
+            
+            # Check if tesseract is available in PATH
+            tesseract_path = shutil.which('tesseract')
+            
+            if tesseract_path:
+                # Test if it works
+                try:
+                    pytesseract.get_tesseract_version()
+                    self.use_tesseract = True
+                    logger.info(f"Tesseract OCR initialized successfully at: {tesseract_path}")
+                except Exception as e:
+                    logger.warning(f"Tesseract found but not working: {e}")
+                    self._init_easyocr()
+            else:
+                # Try common installation paths
+                common_paths = [
+                    r"D:\Tesseract-OCR\tesseract.exe",  # User's custom installation
+                    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                    r"C:\Tesseract-OCR\tesseract.exe",
+                    "/usr/bin/tesseract",
+                    "/usr/local/bin/tesseract"
+                ]
+                
+                for path in common_paths:
+                    if os.path.exists(path):
+                        try:
+                            pytesseract.pytesseract.tesseract_cmd = path
+                            pytesseract.get_tesseract_version()
+                            self.use_tesseract = True
+                            logger.info(f"Tesseract OCR initialized successfully at: {path}")
+                            break
+                        except Exception as e:
+                            logger.warning(f"Tesseract found at {path} but not working: {e}")
+                            continue
+                
+                if not self.use_tesseract:
+                    logger.warning("Tesseract not found in PATH or common locations")
+                    logger.info("Install Tesseract from: https://github.com/UB-Mannheim/tesseract/wiki")
+                    logger.info("See TESSERACT_INSTALLATION.md for installation guide")
+                    self._init_easyocr()
+                    
         except ImportError:
             logger.warning("pytesseract not available, trying EasyOCR")
+            self._init_easyocr()
+        except Exception as e:
+            logger.warning(f"Error initializing Tesseract: {e}")
             self._init_easyocr()
     
     def _init_easyocr(self):
@@ -130,7 +196,7 @@ class RealHandwritingAnalyzer:
             
             try:
                 # Configure Tesseract for better OCR with character whitelist
-                config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789+-=×÷'
+                config = r'--oem 3 --psm 6'
                 text = pytesseract.image_to_string(Image.open(temp_path), config=config)
                 
                 if text and text.strip():
@@ -141,7 +207,6 @@ class RealHandwritingAnalyzer:
                         'method': 'Tesseract'
                     }
             finally:
-                import os
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
         except Exception as e:
@@ -149,7 +214,7 @@ class RealHandwritingAnalyzer:
             return self._extract_text_easyocr_full(image_path)
     
     def _extract_text_easyocr_full(self, image_path: str) -> Dict:
-        """Extract text using EasyOCR with line-by-line approach"""
+        """Extract text using EasyOCR with enhanced preprocessing for better accuracy"""
         try:
             import cv2
             import numpy as np
@@ -158,54 +223,79 @@ class RealHandwritingAnalyzer:
             image = cv2.imread(image_path)
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             
-            # Apply adaptive thresholding
-            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            # Apply multiple preprocessing techniques
+            # 1. Denoise
+            denoised = cv2.fastNlMeansDenoising(gray, h=10)
+            
+            # 2. Contrast enhancement
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(denoised)
+            
+            # 3. Try different thresholding methods
+            methods = []
+            
+            # Method 1: Adaptive thresholding
+            binary1 = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                             cv2.THRESH_BINARY_INV, 11, 2)
+            methods.append(('adaptive', binary1))
             
-            # Detect lines using horizontal projection
-            horizontal_proj = np.sum(binary, axis=1)
-            threshold = np.mean(horizontal_proj) * 0.3
-            lines_mask = horizontal_proj > threshold
+            # Method 2: Otsu thresholding
+            _, binary2 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            methods.append(('otsu', binary2))
             
-            # Find line boundaries
-            line_starts = []
-            line_ends = []
-            in_line = False
-            for i, mask in enumerate(lines_mask):
-                if mask and not in_line:
-                    line_starts.append(i)
-                    in_line = True
-                elif not mask and in_line:
-                    line_ends.append(i)
-                    in_line = False
+            # Method 3: Original grayscale
+            methods.append(('gray', gray))
             
-            if in_line:
-                line_ends.append(len(lines_mask))
+            # Try each method and pick the best result
+            best_text = ""
+            best_confidence = 0
+            best_method = "EasyOCR"
             
-            # Extract text from each line
-            all_texts = []
-            for start, end in zip(line_starts, line_ends):
-                if end - start > 10:  # Minimum line height
-                    line_region = binary[start:end, :]
-                    # Extract text from this line region
-                    results = self.ocr_reader.readtext(line_region, detail=0)
+            for method_name, processed_image in methods:
+                try:
+                    # Extract text using EasyOCR
+                    results = self.ocr_reader.readtext(processed_image, detail=1)
+                    
                     if results:
-                        if isinstance(results[0], tuple):
-                            for text, conf in results:
-                                all_texts.append(text)
-                        else:
-                            all_texts.extend(results)
+                        # Calculate average confidence and collect text
+                        confidences = []
+                        texts = []
+                        
+                        for result in results:
+                            if len(result) == 2:
+                                # Format: (text, confidence)
+                                text, conf = result
+                                texts.append(text)
+                                confidences.append(conf)
+                            elif len(result) >= 2:
+                                # Format: (bbox, text, confidence)
+                                text = result[1]
+                                conf = result[2] if len(result) > 2 else 0.5
+                                texts.append(text)
+                                confidences.append(conf)
+                        
+                        if texts:
+                            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+                            combined_text = ' '.join(texts)
+                            
+                            if avg_confidence > best_confidence and len(combined_text) > len(best_text):
+                                best_text = combined_text
+                                best_confidence = avg_confidence
+                                best_method = f"EasyOCR-{method_name}"
+                                
+                except Exception as e:
+                    logger.warning(f"Error with {method_name} method: {e}")
+                    continue
             
-            if all_texts:
-                full_text = ' '.join(all_texts)
+            if best_text:
                 return {
                     'success': True,
-                    'text': full_text,
-                    'confidence': 75.0,
-                    'method': 'EasyOCR'
+                    'text': best_text,
+                    'confidence': best_confidence * 100,
+                    'method': best_method
                 }
             else:
-                # Fallback to full image OCR
+                # Fallback to simple full image OCR
                 results = self.ocr_reader.readtext(image_path, detail=0)
                 
                 if not results:
@@ -231,12 +321,12 @@ class RealHandwritingAnalyzer:
                 return {
                     'success': True,
                     'text': full_text,
-                    'confidence': 75.0,  # Default confidence when not provided
+                    'confidence': 75.0,
                     'method': 'EasyOCR'
                 }
             
         except Exception as e:
-            logger.error(f"Error extracting text with EasyOCR: {e}")
+            logger.error(f"Error extracting text with enhanced EasyOCR: {e}")
             return self._basic_text_detection(image_path)
     
     def _basic_text_detection(self, image_path: str) -> Dict:

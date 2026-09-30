@@ -1,7 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
-from math_analysis import MathAssessmentGenerator
-from real_handwriting_analysis import RealHandwritingAnalyzer
-from real_math_analysis import RealMathExpressionAnalyzer
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -27,6 +24,37 @@ load_dotenv('.env.local')
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Lazy-load heavy AI dependencies only when needed
+real_handwriting_analyzer = None
+real_math_analyzer = None
+math_assessment_generator = None
+
+def initialize_ai_models():
+    """Initialize AI models only when needed and supported"""
+    global real_handwriting_analyzer, real_math_analyzer, math_assessment_generator
+    
+    try:
+        # Try to import heavy dependencies
+        import cv2
+        import numpy
+        from real_handwriting_analysis import RealHandwritingAnalyzer
+        from real_math_analysis import RealMathExpressionAnalyzer
+        from math_analysis import MathAssessmentGenerator
+        
+        real_handwriting_analyzer = RealHandwritingAnalyzer()
+        real_math_analyzer = RealMathExpressionAnalyzer()
+        math_assessment_generator = MathAssessmentGenerator()
+        
+        logger.info("AI models initialized successfully")
+        return True
+    except ImportError as e:
+        logger.warning(f"AI model dependencies not available: {e}")
+        logger.info("Running in limited mode without AI features")
+        return False
+    except Exception as e:
+        logger.error(f"Error initializing AI models: {e}")
+        return False
 
 def ensure_ffmpeg_available():
     """Ensure a binary named 'ffmpeg' exists on PATH using imageio-ffmpeg."""
@@ -117,6 +145,15 @@ def resolve_database_url():
     return f'sqlite:///{sqlite_path}'
 
 app = Flask(__name__)
+
+# Prevent Flask from watching site-packages to avoid restarts when AI models load
+import sys
+for path in sys.path:
+    if 'site-packages' in path or 'Python313' in path:
+        try:
+            from werkzeug.middleware.proxy_fix import ProxyFix
+        except:
+            pass
 
 # Configuration for serverless environment
 instance_path = os.environ.get('INSTANCE_PATH', './instance')
@@ -457,6 +494,10 @@ def analyze_voice_recording():
     try:
         logger.info('Voice analysis request received')
         
+        # Initialize AI models if not already done (though voice doesn't need them)
+        if real_handwriting_analyzer is None:
+            initialize_ai_models()
+        
         if 'audio' not in request.files:
             logger.warning('No audio file in request')
             return {'success': False, 'error': 'No audio file was provided.'}, 400
@@ -530,6 +571,11 @@ def analyze_handwriting():
     try:
         logger.info('Handwriting analysis request received')
         
+        # Initialize AI models if not already done
+        if real_handwriting_analyzer is None:
+            if not initialize_ai_models():
+                return {'success': False, 'error': 'AI features are not available in this environment. Please use the local development version for full AI capabilities.'}, 503
+        
         if 'image' not in request.files:
             logger.warning('No image file in request')
             return {'success': False, 'error': 'No image file was provided.'}, 400
@@ -601,15 +647,15 @@ def analyze_handwriting():
             
             result = {
                 'success': True,
-                'overall_score': quality_scores['overall_score'],
-                'legibility_score': quality_scores['legibility_score'],
-                'letter_formation': quality_scores['letter_formation'],
-                'spacing_score': quality_scores['spacing_score'],
+                'overall_score': int(quality_scores['overall_score']),
+                'legibility_score': int(quality_scores['legibility_score']),
+                'letter_formation': int(quality_scores['letter_formation']),
+                'spacing_score': int(quality_scores['spacing_score']),
                 'misconceptions': misconceptions,
                 'errors': errors,
                 'recommendations': recommendations[:5],  # Top 5 recommendations
-                'ocr_confidence': ocr_result.get('confidence', 0),
-                'extracted_text': ocr_result.get('text', '')
+                'ocr_confidence': float(ocr_result.get('confidence', 0)),
+                'extracted_text': str(ocr_result.get('text', ''))
             }
             
             logger.info(f'Handwriting analysis successful: Overall score {result.get("overall_score")}')
@@ -623,16 +669,16 @@ def analyze_handwriting():
         logger.exception('Unexpected error while analyzing handwriting')
         return {'success': False, 'error': 'Unable to analyze the handwriting at the moment. Please try again.'}, 500
 
-# Initialize Assessment Generators
-math_assessment_generator = MathAssessmentGenerator()
-real_handwriting_analyzer = RealHandwritingAnalyzer()
-real_math_analyzer = RealMathExpressionAnalyzer()
-
 @app.route('/api/math/analyze', methods=['POST'])
 def analyze_mathematical_handwriting():
     """Analyze mathematical handwriting using YOLOv8 + TrOCR approach"""
     try:
         logger.info('Mathematical handwriting analysis request received')
+        
+        # Initialize AI models if not already done
+        if real_math_analyzer is None or math_assessment_generator is None:
+            if not initialize_ai_models():
+                return {'success': False, 'error': 'AI features are not available in this environment. Please use the local development version for full AI capabilities.'}, 503
         
         if 'image' not in request.files:
             logger.warning('No image file in request')
@@ -1207,6 +1253,7 @@ if os.environ.get('INIT_DB') == 'true':
 if __name__ == '__main__':
     init_db()
     ensure_ffmpeg_available()
-    app.run(debug=True)
+    # Run without debug mode to prevent restarts when AI models load
+    app.run(debug=False)
 else:
     init_db()
