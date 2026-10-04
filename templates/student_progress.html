@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-outline-secondary btn-sm mb-2">
+                &larr; Back to Dashboard
+            </a>
+            <h2 class="fw-bold mb-0">Progress Report: {{ student.full_name or student.username }}</h2>
+        </div>
+        <div>
+            <span class="badge bg-primary fs-6">Total Assessments: {{ assessments|length }}</span>
+        </div>
+    </div>
+
+    {% if assessments %}
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light text-center">
+                <small class="text-muted text-uppercase fw-semibold">Latest WPM</small>
+                <h3 class="fw-bold text-primary my-1">{{ assessments[-1].wpm }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light text-center">
+                <small class="text-muted text-uppercase fw-semibold">Latest Phonics Errors</small>
+                <h3 class="fw-bold text-danger my-1">{{ assessments[-1].phonics_errors }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light text-center">
+                <small class="text-muted text-uppercase fw-semibold">Current RAZ Level</small>
+                <h3 class="fw-bold text-success my-1">Level {{ assessments[-1].raz_level }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light text-center">
+                <small class="text-muted text-uppercase fw-semibold">Latest Assessment</small>
+                <h6 class="fw-bold text-dark my-2">{{ assessments[-1].assessment_date.strftime('%b %d, %Y') }}</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Progress Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="p-3 border rounded bg-white shadow-sm h-100">
+                <h5 class="fw-bold mb-3 text-primary">Reading Speed (WPM) Over Time</h5>
+                <canvas id="wpmChart" height="220"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="p-3 border rounded bg-white shadow-sm h-100">
+                <h5 class="fw-bold mb-3 text-danger">Phonics Errors Over Time</h5>
+                <canvas id="errorsChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assessment History Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="fw-bold m-0 text-dark">Assessment History</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>RAZ Level</th>
+                        <th>WPM</th>
+                        <th>Phonics Errors</th>
+                        <th>Skips</th>
+                        <th>Stumbles</th>
+                        <th>Transcript</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in assessments %}
+                    <tr>
+                        <td>{{ item.assessment_date.strftime('%b %d, %Y %I:%M %p') }}</td>
+                        <td><span class="badge bg-secondary">Level {{ item.raz_level }}</span></td>
+                        <td><strong class="text-primary">{{ item.wpm }}</strong></td>
+                        <td><span class="text-danger fw-semibold">{{ item.phonics_errors }}</span></td>
+                        <td>{{ item.skips }}</td>
+                        <td>{{ item.stumbles }}</td>
+                        <td>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-primary"
+                                    onclick="showTranscript('{{ item.reference_transcript or 'Passage text not available.' }}', '{{ item.transcript or 'No transcript recorded.' }}')">
+                                View Transcript
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="alert alert-info text-center p-5 my-4">
+        <h4>No voice assessments found for this student.</h4>
+        <p class="text-muted mb-0">Complete a voice assessment first to view progress analytics.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Native HTML Dialog for Transcript Comparison -->
+<dialog id="transcriptDialog" class="p-4 border-0 rounded shadow-lg" style="max-width: 700px; width: 90%;">
+    <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+        <h5 class="m-0 fw-bold">Transcript Comparison</h5>
+        <button type="button" class="btn-close" onclick="document.getElementById('transcriptDialog').close()"></button>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="p-3 border rounded bg-light h-100">
+                <h6 class="fw-bold text-primary mb-2">Actual Text</h6>
+                <div id="dialogActualText" class="text-dark small" style="white-space: pre-wrap;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="p-3 border rounded bg-light h-100">
+                <h6 class="fw-bold text-success mb-2">Captured Transcript</h6>
+                <div id="dialogCapturedTranscript" class="text-dark small" style="white-space: pre-wrap;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="text-end mt-3">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('transcriptDialog').close()">Close</button>
+    </div>
+</dialog>
+
+<!-- Chart.js Integration -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function showTranscript(actual, captured) {
+        document.getElementById('dialogActualText').textContent = actual;
+        document.getElementById('dialogCapturedTranscript').textContent = captured;
+        document.getElementById('transcriptDialog').showModal();
+    }
+
+    {% if assessments %}
+    const labels = [
+        {% for item in assessments %}
+            "{{ item.assessment_date.strftime('%b %d') }}",
+        {% endfor %}
+    ];
+
+    const wpmData = [
+        {% for item in assessments %}
+            parseFloat("{{ item.wpm }}") || 0,
+        {% endfor %}
+    ];
+
+    const errorData = [
+        {% for item in assessments %}
+            parseInt("{{ item.phonics_errors }}") || 0,
+        {% endfor %}
+    ];
+
+    // Render WPM Line Chart
+    new Chart(document.getElementById('wpmChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Words Per Minute (WPM)',
+                data: wpmData,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // Render Phonics Errors Bar Chart
+    new Chart(document.getElementById('errorsChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Phonics Errors',
+                data: errorData,
+                backgroundColor: '#dc3545',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

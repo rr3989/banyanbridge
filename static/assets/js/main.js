@@ -369,6 +369,45 @@ window.addEventListener('click', (e) => {
     }
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+    const studentSelect = document.getElementById('studentSelect');
+    const razLevelSelect = document.getElementById('razLevelSelect');
+    const referenceText = document.getElementById('referenceText');
+    const startRecordBtn = document.getElementById('startRecordBtn');
+
+    // RAZ Level Reading Passages Dictionary
+    const razPassages = {
+        'aa': 'I see a dog. I see a cat. I see a bird.',
+        'A': 'My pet is small. My pet likes to run. My pet is happy.',
+        'B': 'I get my bag. I walk to school. I see my friends at school.',
+        'C': 'We went to the zoo. We saw lions and tigers. The monkeys played on the tree.',
+        'D': 'Dark clouds fill the sky. The rain falls down fast. Then the warm sun comes back out.',
+        'E': 'The girl goes to the park. She likes to play. The girl climbs up the ladder. She slides down the slide. The girl sits on the swing. She swings very high. The girl runs on the grass. The park is fun!',
+        'F': 'A thirsty crow looked for water in the garden. He found a tall pitcher with very little water at the bottom. He dropped small stones into the pitcher until the water rose to the top.'
+    };
+
+    // Update text box dynamically on level dropdown change
+    if (razLevelSelect && referenceText) {
+        razLevelSelect.addEventListener('change', (e) => {
+            const selectedLevel = e.target.value;
+            if (razPassages[selectedLevel]) {
+                referenceText.value = razPassages[selectedLevel];
+            }
+        });
+    }
+
+    // Require student selection before starting recording
+    if (startRecordBtn) {
+        startRecordBtn.addEventListener('click', () => {
+            if (studentSelect && !studentSelect.value) {
+                alert('Please select a student from the list before starting the recording.');
+                studentSelect.focus();
+                return;
+            }
+        });
+    }
+});
+
 if (startRecordBtn) {
     startRecordBtn.addEventListener('click', async () => {
         try {
@@ -538,19 +577,141 @@ async function analyzeRecording() {
     }
 }
 
-if (submitAssessmentBtn) {
-    submitAssessmentBtn.addEventListener('click', () => {
-        if (voiceModal) {
-            voiceModal.classList.remove('show');
-        }
-        if (recordingStatus) {
-            recordingStatus.textContent = 'Assessment submitted successfully.';
-        }
-        if (assessmentResults) {
-            assessmentResults.style.display = 'none';
-        }
-    });
-}
+// Make showTranscript globally available for inline onclick calls in the table
+window.showTranscript = function(actual, captured) {
+    const actualEl = document.getElementById('dialogActualText');
+    const capturedEl = document.getElementById('dialogCapturedTranscript');
+    const dialogEl = document.getElementById('transcriptDialog');
+
+    if (actualEl && capturedEl && dialogEl) {
+        actualEl.textContent = actual || 'No actual text available.';
+        capturedEl.textContent = captured || 'No transcript recorded.';
+        dialogEl.showModal();
+    } else {
+        console.error("Transcript dialog elements missing in DOM.");
+    }
+};
+
+// Handle Assessment Form Submission
+document.addEventListener('DOMContentLoaded', () => {
+    const submitBtn = document.getElementById('submitAssessmentBtn') || 
+                      document.querySelector('button[onclick*="submit"]') ||
+                      document.querySelector('.btn-submit');
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            // 1. Get Selected Student ID
+            const studentSelect = document.getElementById('studentSelect') || 
+                                  document.querySelector('select[name="student_id"]');
+            const studentId = studentSelect ? studentSelect.value : null;
+
+            if (!studentId) {
+                alert('Please select a student before submitting.');
+                return;
+            }
+
+            // 2. Extract Transcript and Performance Metrics from the UI
+            const fullText = document.body.innerText || '';
+
+            // Extract Captured Transcript text
+            let transcriptVal = '';
+            const transcriptMatch = fullText.match(/Transcript captured:\s*([^\n\r]+)/i);
+            if (transcriptMatch) {
+                transcriptVal = transcriptMatch[1].trim();
+            } else if (window.latestTranscript) {
+                transcriptVal = window.latestTranscript.trim();
+            }
+
+            // Extract Numerical Metrics
+            const extractPattern = (pattern, fallback = '0') => {
+                const match = fullText.match(pattern);
+                return match ? match[1].trim() : fallback;
+            };
+
+            // Extract Reference / Passage Text from the UI
+            const getReferenceText = () => {
+            if (window.latestReferenceText && window.latestReferenceText.trim() !== '') {
+                return window.latestReferenceText.trim();
+            }
+
+            // Fallback: Read from the reading passage container/textarea on screen
+            const passageEl = document.getElementById('passageText') || 
+                            document.getElementById('referenceText') || 
+                            document.querySelector('.passage-container') ||
+                            document.querySelector('textarea[name="passage_text"]');
+
+            if (passageEl) {
+                return passageEl.innerText || passageEl.value || '';
+            }
+
+            // Default fallback if reading directly from page text
+            const fullText = document.body.innerText || '';
+            const match = fullText.match(/Read this text aloud:\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i);
+            return match ? match[1].trim() : '';
+        };
+
+            const wpmVal = extractPattern(/WPM\s*([\d.]+)\s*WPM/i, extractPattern(/WPM\s*[:\-]?\s*([\d.]+)/i, '0'));
+            const phonicsVal = extractPattern(/Phonics\s*Errors\s*(\d+)/i, '0');
+            const skipsVal = extractPattern(/Skips\s*(\d+)/i, '0');
+            const stumblesVal = extractPattern(/Stumbles\s*(\d+)/i, '0');
+            const strugglesVal = extractPattern(/Struggles\s*(\d+)/i, '0');
+            const razVal = extractPattern(/RAZ\s*Level\s*([A-Z0-9]+)/i, 'A');
+            const referenceVal = getReferenceText();
+            const summaryText = `RAZ Level: ${razVal}\nWPM: ${wpmVal}\nPhonics Errors: ${phonicsVal}\nSkips: ${skipsVal}\nStumbles: ${stumblesVal}\nStruggles: ${strugglesVal}`;
+
+            // 3. Construct Payload
+            const payload = {
+                student_id: studentId,
+                raz_level: String(razVal),
+                wpm: String(wpmVal),
+                phonics_errors: String(phonicsVal),
+                skips: String(skipsVal),
+                stumbles: String(stumblesVal),
+                struggles: String(strugglesVal),
+                transcript: String(transcriptVal),
+                reference_transcript: String(referenceVal),
+                assessment_details: String(summaryText)
+            };
+
+            console.log('Submitting Voice Assessment Payload:', payload);
+
+            // 4. Update UI State & Send API Request
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/api/voice-assessment/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    alert('✅ Assessment submitted and saved to database successfully!');
+                    submitBtn.textContent = 'Submitted ✓';
+                    submitBtn.classList.remove('btn-primary');
+                    submitBtn.classList.add('btn-success');
+                    
+                    // Optional: reload page to refresh table
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    alert('❌ Failed to save: ' + (result.message || 'Server error'));
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Assessment';
+                }
+            } catch (err) {
+                console.error('Submission Error:', err);
+                alert('❌ Network error saving assessment.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Assessment';
+            }
+        });
+    }
+});
 
 // Handwriting Assessment Functionality
 if (handwritingBtn) {

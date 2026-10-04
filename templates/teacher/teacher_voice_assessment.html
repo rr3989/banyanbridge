@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Voice Assessment - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+
+
+</head>
+<body>
+
+    {% include 'header.html' %}
+     <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+                <h3>Teacher Panel</h3>
+            </div>
+
+<!-- Assessment Links (Visible only when logged in as a teacher) -->
+        {% if current_user.is_authenticated and current_user.role == 'teacher' %}
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('upload_material') }}">Upload Material</a></li>
+                <li>
+                <a href="{{ url_for('teacher_voice_assessment') }}" class="active">Voice Assessment</a>
+            </li>
+                <li>
+                    <a href="#">Handwriting Assessment</a>
+                <!-- <a href="{{ url_for('teacher_handwriting_assessment') }}"></a>-->
+                </li>
+                <li>
+                    <a href="#">Math Assessment</a>
+                <!--<a href="{{ url_for('teacher_math_assessment') }}"></a>-->
+                </li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        {% endif %}
+        
+        </div>
+
+
+<div class="main-content">
+            <div class="dashboard-header">
+                <h1>Voice Recording & Assessment</h1>
+            </div>
+    <p class="text-muted mb-4">Record student oral reading fluency and evaluate WPM, phonics, and accuracy.</p>
+    <br>
+    <div class="row g-3 mb-4">
+        <!-- Student Selection (Populated from Database) -->
+    <div class="col-md-6">
+            <label for="studentSelect" class="form-label fw-bold text-secondary">Select Student</label>
+            <select id="studentSelect" name="student_id" class="form-select form-select-lg" required>
+                <option value="" disabled selected>-- Select Student --</option>
+                {% for student in students %}
+                    <option value="{{ student.id }}">
+                        {{ student.full_name or student.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div><br>
+        <div class="col-md-6">
+            <label for="razLevelSelect" class="form-label fw-bold text-secondary">Select RAZ Reading Level</label>
+            <select id="razLevelSelect" class="form-select form-select-lg">
+                <option value="o" disabled selected>Select Level</option>
+                <option value="aa">Level aa - The Park</option>
+                <option value="A">Level A - My Pet</option>
+                <option value="B">Level B - Going to School</option>
+                <option value="C">Level C - At the Zoo</option>
+                <option value="D">Level D - Rain and Sun</option>
+                <option value="E">Level E - The Girl at the Park</option>
+                <option value="F">Level F - The Clever Crow</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="voiceRecordingContainer" class="voice-container">
+        <label for="referenceText" class="form-label fw-bold">Read this text aloud:</label>
+        <textarea id="referenceText" class="form-control mb-3" style="width: 100%; height: 100px; ">
+        </textarea>
+
+        <div class="recording-controls d-flex gap-2 mb-3">
+            <button id="startRecordBtn" class="btn btn-primary">🎤 Start Recording</button>
+            <button id="stopRecordBtn" class="btn btn-danger" disabled>⏹ Stop Recording</button>
+            <button id="playRecordBtn" class="btn btn-secondary" disabled>▶ Play Recording</button>
+            <button id="analyzeRecordBtn" class="btn btn-success" disabled>🔍 Analyze Recording</button>
+        </div>
+        
+        <div id="recordingStatus" class="recording-status mb-3"></div>
+        
+        <div id="assessmentResults" class="assessment-results border p-3 rounded" style="display: none;">
+            <h4 class="mb-3">Speech Assessment Results</h4>
+            <div class="results-grid row g-3 text-center mb-3">
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">RAZ Level</label><span id="razLevel" class="fw-bold fs-5">-</span></div></div>
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">WPM</label><span id="wcpm" class="fw-bold fs-5">-</span></div></div>
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">Phonics Errors</label><span id="phonicsErrors" class="fw-bold fs-5">0</span></div></div>
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">Skips</label><span id="skips" class="fw-bold fs-5">0</span></div></div>
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">Stumbles</label><span id="stumbles" class="fw-bold fs-5">0</span></div></div>
+                <div class="col-md-2"><div class="p-2 bg-light border rounded"><label class="d-block text-muted small">Struggles</label><span id="struggles" class="fw-bold fs-5">0</span></div></div>
+            </div>
+
+            <div class="assessment-summary mb-3">
+                <h5 class="fw-bold">Assessment Summary</h5>
+                <div class="summary-block mb-1"><strong>What went right:</strong> <span id="whatWentRight">-</span></div>
+                <div class="summary-block mb-1"><strong>What went wrong:</strong> <span id="whatWentWrong">-</span></div>
+                <div class="summary-block mb-1"><strong>Why this RAZ level:</strong> <span id="razReason">-</span></div>
+                <div class="summary-block mb-1"><strong>Phonics details:</strong> <span id="phonicsDetail">-</span></div>
+            </div>
+
+            <button type="button" id="submitAssessmentBtn" class="btn btn-primary">
+    Submit Assessment
+</button>
+        </div>
+    </div>
+</div>
+
+    <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+
+</body>
+</html>

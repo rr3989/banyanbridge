@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from functools import wraps
 import os
 import secrets
 import logging
@@ -17,9 +18,24 @@ from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import tempfile
 import sys
+from flask import jsonify, request
+from sqlalchemy import asc
+from flask import send_from_directory, abort, flash, redirect, url_for
+from flask_login import login_required, current_user
 
 # Load environment variables from .env.local
-load_dotenv('.env.local')
+load_dotenv('.env.local', override=True)
+app = Flask(__name__)
+
+secret_key = os.environ.get('SECRET_KEY')
+
+if not secret_key:
+    raise RuntimeError(
+        "CRITICAL ERROR: 'SECRET_KEY' is missing or empty in .env.local! "
+        "Please add SECRET_KEY=<your_key> to .env.local to run the application."
+    )
+
+app.config['SECRET_KEY'] = secret_key
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -144,8 +160,6 @@ def resolve_database_url():
     sqlite_path = os.path.join(base_dir, 'banyanbridge_local.db')
     return f'sqlite:///{sqlite_path}'
 
-app = Flask(__name__)
-
 # Prevent Flask from watching site-packages to avoid restarts when AI models load
 import sys
 for path in sys.path:
@@ -186,6 +200,23 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+db_uri = resolve_database_url()
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 280,
+    'pool_timeout': 30,
+    'pool_size': 10,
+    'max_overflow': 5
+}
+
+# Check active connection
+if db_uri.startswith('sqlite'):
+    print(f"--> [DB MODE] Running locally with SQLite: {db_uri}")
+else:
+    print("--> [DB MODE] Connected to remote PostgreSQL / Neon DB")
+
 
 # Ensure upload directory exists (only if not in read-only environment)
 try:
@@ -339,6 +370,7 @@ class TeachingMaterial(db.Model):
     subject = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
@@ -397,9 +429,32 @@ class ContactMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class VoiceAssessment(db.Model):
+    __tablename__ = 'voice_assessment'
+
+    assessment_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assessment_details = db.Column(db.String(3000), nullable=True)
+    assessment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    raz_level = db.Column(db.String(10), nullable=True)
+    
+    wpm = db.Column(db.String(50), nullable=True)
+    phonics_errors = db.Column(db.Text, nullable=True)
+    skips = db.Column(db.String(50), nullable=True)
+    stumbles = db.Column(db.String(50), nullable=True)
+    struggles = db.Column(db.String(50), nullable=True)
+    reference_transcript = db.Column(db.String(2000), nullable=True)
+    transcript = db.Column(db.String(2000), nullable=True)
+
+    # Relationships referencing public.user
+    student = db.relationship('User', foreign_keys=[student_id], backref='voice_assessments_as_student')
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='voice_assessments_as_teacher')
+
+
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -834,6 +889,212 @@ def analyze_mathematical_handwriting():
 def health():
     return 'OK', 200
 
+# Decorator to restrict routes to teachers only
+def teacher_required(f):
+   @wraps(f)
+   def decorated_function(*args, **kwargs):
+        print(f"--> Debug teacher_required: Auth={current_user.is_authenticated}, User={getattr(current_user, 'username', None)}, Role='{getattr(current_user, 'role', None)}'")
+        
+        if not current_user.is_authenticated:
+            flash('Please log in first.', 'warning')
+            return redirect(url_for('login'))
+
+        user_role = (getattr(current_user, 'role', '') or '').strip().lower()
+        if user_role != 'teacher':
+            flash(f'Access denied. Account role is "{current_user.role}".', 'danger')
+            return redirect(url_for('index'))
+
+        return f(*args, **kwargs)
+   return decorated_function
+
+# Updated teacher assessment routes with distinct function names
+
+# Teacher Routes
+@app.route('/teacher/dashboard')
+@login_required
+def teacher_dashboard():
+    if current_user.role != 'teacher':
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+    
+        # Fetch all voice assessments conducted by this teacher
+    assessments = VoiceAssessment.query.filter_by(teacher_id=current_user.id)\
+                                       .order_by(VoiceAssessment.assessment_date.desc())\
+                                       .all()
+    materials = TeachingMaterial.query.filter_by(teacher_id=current_user.id).order_by(TeachingMaterial.uploaded_at.desc()).all()
+
+    # Calculate key metrics
+    total_assessments = len(assessments)
+    total_materials = len(materials)
+    
+    return render_template(
+        'teacher/teacher_dashboard.html',
+        assessments=assessments,
+        materials=materials,
+        total_assessments=total_assessments,
+        total_materials=total_materials
+    )
+
+@app.route('/teacher/material/upload', methods=['GET', 'POST'])
+@login_required
+def upload_material():
+    if current_user.role != 'teacher':
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file uploaded', 'error')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(request.url)
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            
+            material = TeachingMaterial(
+                title=request.form.get('title'),
+                subject=request.form.get('subject'),
+                description=request.form.get('description'),
+                filename=filename,
+                file_path=filename,
+                teacher_id=current_user.id
+            )
+            
+            db.session.add(material)
+            db.session.commit()
+            
+            flash('Material uploaded successfully!', 'success')
+            return redirect(url_for('teacher_dashboard'))
+        else:
+            flash('Only PDF files are allowed', 'error')
+    
+    return render_template('teacher/teacher_upload_material.html')
+
+# Ensure UPLOAD_FOLDER is configured in your Flask app config
+# app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
+
+@app.route('/material/view/<int:material_id>')
+@login_required
+def view_material(material_id):
+    # Retrieve the material record
+    material = TeachingMaterial.query.get_or_404(material_id)
+    
+    # Check if file exists in the upload folder
+    upload_dir = app.config.get('UPLOAD_FOLDER', os.path.join(app.root_path, 'uploads'))
+    filename = material.file_path  # Stores the saved filename (e.g., 'phonics_rev.pdf')
+
+    if not filename or not os.path.exists(os.path.join(upload_dir, filename)):
+        flash('File not found or has been deleted from server.', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    # serve file in browser (inline=True opens PDFs/images in browser tab)
+    return send_from_directory(upload_dir, filename, as_attachment=False)
+
+
+@app.route('/teacher/material/<int:material_id>/delete')
+@login_required
+def delete_material(material_id):
+    if current_user.role != 'teacher':
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+    
+    material = TeachingMaterial.query.get_or_404(material_id)
+    if material.teacher_id != current_user.id:
+        flash('Access denied', 'error')
+        return redirect(url_for('teacher_dashboard'))
+    
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], material.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    db.session.delete(material)
+    db.session.commit()
+    flash('Material deleted successfully', 'success')
+    return redirect(url_for('teacher_dashboard'))
+
+
+@app.route('/teacher/assessment/voice')
+@login_required
+@teacher_required
+def teacher_voice_assessment():
+    students = User.query.filter_by(role='student').order_by(User.full_name.asc()).all()
+    return render_template('teacher/teacher_voice_assessment.html', students=students)
+
+
+@app.route('/api/voice-assessment/submit', methods=['POST'])
+@login_required
+@teacher_required
+def submit_voice_assessment():
+    try:
+        data = request.get_json() or {}
+
+        student_id = data.get('student_id')
+        if not student_id:
+            return jsonify({'success': False, 'message': 'Student ID is required.'}), 400
+
+        assessment = VoiceAssessment(
+            student_id=int(student_id),
+            teacher_id=current_user.id,
+            raz_level=str(data.get('raz_level', 'A')),
+            wpm=str(data.get('wpm', '')),
+            phonics_errors=str(data.get('phonics_errors', '')),
+            skips=str(data.get('skips', '')),
+            stumbles=str(data.get('stumbles', '')),
+            struggles=str(data.get('struggles', '')),
+            transcript=str(data.get('transcript', '')),
+            reference_transcript=str(data.get('reference_transcript', '')),
+            assessment_details=str(data.get('assessment_details', ''))
+        )
+
+        db.session.add(assessment)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Voice assessment saved successfully!',
+            'assessment_id': assessment.assessment_id
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/teacher/student/<int:student_id>/progress')
+@login_required
+@teacher_required
+def student_progress_report(student_id):
+    student = User.query.get_or_404(student_id)
+    
+    # Query student assessments ordered by date (oldest to newest for trajectory)
+    assessments = VoiceAssessment.query.filter_by(student_id=student_id)\
+                                        .order_by(asc(VoiceAssessment.assessment_date))\
+                                        .all()
+
+    return render_template(
+        'student_progress.html',
+        student=student,
+        assessments=assessments
+    )
+
+@app.route('/teacher/assessment/handwriting')
+@login_required
+@teacher_required
+def teacher_handwriting_assessment():
+    return render_template('teacher/handwriting_assessment.html')
+
+@app.route('/teacher/assessment/math')
+@login_required
+@teacher_required
+def teacher_math_assessment():
+    return render_template('teacher/math_assessment.html')
+
+
 @app.route('/')
 def index():
     try:
@@ -845,7 +1106,7 @@ def index():
 
 @app.route('/about')
 def about():
-    return render_template('about.html')
+    return render_template('static_pages/about.html')
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -886,11 +1147,11 @@ def contact():
             logger.error(traceback.format_exc())
             return {'success': False, 'error': 'An error occurred while processing your message'}, 500
     
-    return render_template('contact.html')
+    return render_template('static_pages/contact.html')
 
 @app.route('/donate')
 def donate():
-    return render_template('donate.html')
+    return render_template('static_pages/donate.html')
 
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
@@ -974,8 +1235,9 @@ def admin_dashboard():
     
     exams = Exam.query.all()
     users = User.query.all()
+    materials = TeachingMaterial.query.all()
     contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
-    return render_template('admin/dashboard.html', exams=exams, users=users, contact_messages=contact_messages)
+    return render_template('admin/admin_dashboard.html', exams=exams, users=users, materials=materials, contact_messages=contact_messages)
 
 @app.route('/admin/exam/create', methods=['GET', 'POST'])
 @login_required
@@ -1011,7 +1273,7 @@ def create_exam():
         flash('Exam created successfully!', 'success')
         return redirect(url_for('admin_dashboard'))
     
-    return render_template('admin/create_exam.html')
+    return render_template('admin/admin_create_exam.html')
 
 @app.route('/admin/exam/<int:exam_id>/delete')
 @login_required
@@ -1026,76 +1288,50 @@ def delete_exam(exam_id):
     flash('Exam deleted successfully', 'success')
     return redirect(url_for('admin_dashboard'))
 
-# Teacher Routes
-@app.route('/teacher/dashboard')
-@login_required
-def teacher_dashboard():
-    if current_user.role != 'teacher':
-        flash('Access denied', 'error')
-        return redirect(url_for('index'))
-    
-    materials = TeachingMaterial.query.filter_by(teacher_id=current_user.id).all()
-    return render_template('teacher/dashboard.html', materials=materials)
+# Helper decorator to restrict to admin users
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            flash('Access denied. Admin privileges required.', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-@app.route('/teacher/material/upload', methods=['GET', 'POST'])
+@app.route('/admin/user/edit/<int:user_id>', methods=['POST'])
 @login_required
-def upload_material():
-    if current_user.role != 'teacher':
-        flash('Access denied', 'error')
-        return redirect(url_for('index'))
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
     
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No file uploaded', 'error')
-            return redirect(request.url)
-        
-        file = request.files['file']
-        if file.filename == '':
-            flash('No file selected', 'error')
-            return redirect(request.url)
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            
-            material = TeachingMaterial(
-                title=request.form.get('title'),
-                subject=request.form.get('subject'),
-                description=request.form.get('description'),
-                filename=filename,
-                teacher_id=current_user.id
-            )
-            
-            db.session.add(material)
-            db.session.commit()
-            
-            flash('Material uploaded successfully!', 'success')
-            return redirect(url_for('teacher_dashboard'))
-        else:
-            flash('Only PDF files are allowed', 'error')
-    
-    return render_template('teacher/upload_material.html')
+    user.full_name = request.form.get('full_name', '').strip()
+    user.username = request.form.get('username', '').strip()
+    user.email = request.form.get('email', '').strip()
+    user.role = request.form.get('role', 'student').strip()
 
-@app.route('/teacher/material/<int:material_id>/delete')
+    try:
+        db.session.commit()
+        flash(f'User {user.username} updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error updating user. Email or username may already exist.', 'danger')
+
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/user/delete/<int:user_id>', methods=['POST'])
 @login_required
-def delete_material(material_id):
-    if current_user.role != 'teacher':
-        flash('Access denied', 'error')
-        return redirect(url_for('index'))
-    
-    material = TeachingMaterial.query.get_or_404(material_id)
-    if material.teacher_id != current_user.id:
-        flash('Access denied', 'error')
-        return redirect(url_for('teacher_dashboard'))
-    
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], material.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    
-    db.session.delete(material)
+@admin_required
+def delete_user(user_id):
+    if user_id == current_user.id:
+        flash('You cannot delete your own admin account.', 'warning')
+        return redirect(url_for('admin_dashboard'))
+
+    user = User.query.get_or_404(user_id)
+    db.session.delete(user)
     db.session.commit()
-    flash('Material deleted successfully', 'success')
-    return redirect(url_for('teacher_dashboard'))
+    
+    flash(f'User {user.username} deleted.', 'success')
+    return redirect(url_for('admin_dashboard'))
 
 # Student Routes
 @app.route('/student/dashboard')
@@ -1110,7 +1346,7 @@ def student_dashboard():
     available_exams = Exam.query.all()
     my_attempts = ExamAttempt.query.filter_by(student_id=current_user.id).all()
     
-    return render_template('student/dashboard.html', 
+    return render_template('student/student_dashboard.html', 
                           materials=materials, 
                           assignments=my_assignments,
                           exams=available_exams,
@@ -1163,7 +1399,7 @@ def upload_assignment():
         else:
             flash('Only PDF files are allowed', 'error')
     
-    return render_template('student/upload_assignment.html')
+    return render_template('student/student_upload_assignment.html')
 
 @app.route('/student/exam/<int:exam_id>/take', methods=['GET', 'POST'])
 @login_required
@@ -1213,7 +1449,7 @@ def take_exam(exam_id):
         flash(f'Exam submitted! Your score: {correct_count}/{len(exam.questions)}', 'success')
         return redirect(url_for('student_dashboard'))
     
-    return render_template('student/take_exam.html', exam=exam)
+    return render_template('student/student_take_exam.html', exam=exam)
 
 @app.route('/student/attempt/<int:attempt_id>/view')
 @login_required
@@ -1227,7 +1463,8 @@ def view_attempt(attempt_id):
         flash('Access denied', 'error')
         return redirect(url_for('student_dashboard'))
     
-    return render_template('student/view_attempt.html', attempt=attempt)
+    return render_template('student/student_view_attempt.html', attempt=attempt)
+
 
 def init_db():
     with app.app_context():
@@ -1246,6 +1483,8 @@ def init_db():
                 print("Default admin user created: username=admin, password=admin123")
         except Exception as e:
             print(f"Database initialization error: {e}")
+
+
 
 if os.environ.get('INIT_DB') == 'true':
     init_db()
