@@ -2734,6 +2734,19 @@ img {
     margin: 0 !important;
 }
 
+#referenceText {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    font-weight: 500; /* Optional: Makes the text slightly bolder/easier to read */
+}
+
+.transcript-container {
+    white-space: normal !important;   /* Allow text to wrap onto new lines */
+    overflow: visible !important;     /* Prevent clipping */
+    word-break: break-word;          /* Prevent long words from breaking layout */
+    max-width: 100%;
+}
+
 /* Dashboard inner header layout */
 .dashboard-header {
     display: flex;

@@ -25,6 +25,7 @@
                 <li>
                 <a href="{{ url_for('teacher_voice_assessment') }}">Voice Assessment</a>
                 </li>
+                
                 <li>
                     <a href="#">Handwriting Assessment</a>
                 <!-- <a href="{{ url_for('teacher_handwriting_assessment') }}"></a>-->
@@ -132,20 +133,26 @@
             <tbody>
                 {% for material in materials %}
                 <tr>
-                    <td>{% if material.file_path %}
-                            <a href="{{ url_for('view_material', material_id=material.id) }}" 
-                               target="_blank" 
-                               class="fw-bold text-primary text-decoration-none">
-                                📄 {{ material.title }}
-                            </a>
+                    <td>
+                        {% if material.file_path %}
+                            {% if material.file_path.startswith('http') %}
+                                <!-- Direct Object Storage Link (Vercel Blob / S3) -->
+                                <a href="{{ material.file_path }}" target="_blank" class="fw-bold text-primary text-decoration-none">
+                                    📄 {{ material.title }}
+                                </a>
                             {% else %}
-                            <span class="fw-bold text-dark">{{ material.title }}</span>
+                                <!-- Local Fallback Link -->
+                                <a href="{{ url_for('view_material', material_id=material.id) }}" target="_blank" class="fw-bold text-primary text-decoration-none">
+                                    📄 {{ material.title }}
+                                </a>
                             {% endif %}
-                        </td>
-                    <td>{{ material.subject }}</td>
+                        {% else %}
+                            <span class="fw-bold text-dark">{{ material.title }}</span>
+                        {% endif %}
+                    </td>                    <td>{{ material.subject }}</td>
                     <td>{{ material.description[:50] + '...' if material.description and material.description|length > 50 else (material.description or '-') }}</td>
                     <td>{{ material.uploaded_at.strftime('%Y-%m-%d') }}</td>
-                    <td class="text-end">
+<!--                    <td class="text-end">
                             <form action="{{ url_for('delete_material', material_id=material.id) }}" 
                                   method="POST" 
                                   class="d-inline"
@@ -153,7 +160,8 @@
                                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                             </form>
                         </td>
-                </tr>
+                    -->
+                                    </tr>
                 {% endfor %}
             </tbody>
         </table>

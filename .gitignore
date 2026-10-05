@@ -60,3 +60,19 @@ uploads/*
 flask_session/
 .vercel
 .env*
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache & Databases
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+
+# Node dependencies
+node_modules/

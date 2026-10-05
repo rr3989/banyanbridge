@@ -11,7 +11,7 @@ imageio-ffmpeg==0.5.1
 vaderSentiment==3.3.2
 Pillow==10.1.0
 scipy==1.11.0
-
+requests
 # Optional AI dependencies - these are only needed for local development
 # They are lazy-loaded in the application and not required for Vercel deployment
 opencv-python==4.8.1.78

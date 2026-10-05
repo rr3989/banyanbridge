@@ -44,22 +44,6 @@
         </div>
     </div>
 
-    <!-- Dynamic Progress Charts -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-white shadow-sm h-100">
-                <h5 class="fw-bold mb-3 text-primary">Reading Speed (WPM) Over Time</h5>
-                <canvas id="wpmChart" height="220"></canvas>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-white shadow-sm h-100">
-                <h5 class="fw-bold mb-3 text-danger">Phonics Errors Over Time</h5>
-                <canvas id="errorsChart" height="220"></canvas>
-            </div>
-        </div>
-    </div>
-
     <!-- Assessment History Table -->
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3">
@@ -79,7 +63,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in assessments %}
+                    {% for item in assessments | sort(attribute='assessment_date', reverse=True) %}
                     <tr>
                         <td>{{ item.assessment_date.strftime('%b %d, %Y %I:%M %p') }}</td>
                         <td><span class="badge bg-secondary">Level {{ item.raz_level }}</span></td>
