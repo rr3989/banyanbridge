@@ -1,193 +1,265 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'header.html' %}
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+            <h3>Teacher Panel</h3>
+        </div>
 
-{% block content %}
-<div class="container my-4">
-    <!-- Header with Back Button -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-outline-secondary btn-sm mb-2">
-                &larr; Back to Dashboard
-            </a>
-            <h2 class="fw-bold mb-0">Progress Report: {{ student.full_name or student.username }}</h2>
-        </div>
-        <div>
-            <span class="badge bg-primary fs-6">Total Assessments: {{ assessments|length }}</span>
-        </div>
+        <!-- Assessment Links (Visible only when logged in as a teacher) -->
+        {% if current_user.is_authenticated and current_user.role == 'teacher' %}
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('teacher_dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('upload_material') }}">Upload Material</a></li>
+                <li><a href="{{ url_for('teacher_voice_assessment') }}">Voice Assessment</a></li>
+                <li><a href="#">Handwriting Assessment</a></li>
+                <li><a href="#">Math Assessment</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        {% endif %}
     </div>
 
-    {% if assessments %}
-    <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="p-3 border rounded bg-light text-center">
-                <small class="text-muted text-uppercase fw-semibold">Latest WPM</small>
-                <h3 class="fw-bold text-primary my-1">{{ assessments[-1].wpm }}</h3>
+    <div class="main-content">
+        <div class="dashboard-header">
+            <h1>Teacher Dashboard</h1>
+            <div class="user-info">
+                <h2><span>Welcome, {{ current_user.full_name }}</span></h2>
+            </div>
+            <div class="user-info">
+                <h2><span>Progress Report: {{ student.full_name or student.username }}</span></h2>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="p-3 border rounded bg-light text-center">
-                <small class="text-muted text-uppercase fw-semibold">Latest Phonics Errors</small>
-                <h3 class="fw-bold text-danger my-1">{{ assessments[-1].phonics_errors }}</h3>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="p-3 border rounded bg-light text-center">
-                <small class="text-muted text-uppercase fw-semibold">Current RAZ Level</small>
-                <h3 class="fw-bold text-success my-1">Level {{ assessments[-1].raz_level }}</h3>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="p-3 border rounded bg-light text-center">
-                <small class="text-muted text-uppercase fw-semibold">Latest Assessment</small>
-                <h6 class="fw-bold text-dark my-2">{{ assessments[-1].assessment_date.strftime('%b %d, %Y') }}</h6>
-            </div>
-        </div>
-    </div>
 
-    <!-- Assessment History Table -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h5 class="fw-bold m-0 text-dark">Assessment History</h5>
+        {% if assessments %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Assessments</h3>
+                <div class="number">{{ assessments|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Latest WPM</h3>
+                <div class="number">{{ assessments[-1].wpm }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Latest Phonics Errors</h3>
+                <div class="number">{{ assessments[-1].phonics_errors }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Current RAZ Level</h3>
+                <div class="number">Level {{ assessments[-1].raz_level }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Latest Assessment</h3>
+                <div class="number">{{ assessments[-1].assessment_date.strftime('%b %d, %Y') }}</div>
+            </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Date</th>
-                        <th>RAZ Level</th>
-                        <th>WPM</th>
-                        <th>Phonics Errors</th>
-                        <th>Skips</th>
-                        <th>Stumbles</th>
-                        <th>Transcript</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in assessments | sort(attribute='assessment_date', reverse=True) %}
-                    <tr>
-                        <td>{{ item.assessment_date.strftime('%b %d, %Y %I:%M %p') }}</td>
-                        <td><span class="badge bg-secondary">Level {{ item.raz_level }}</span></td>
-                        <td><strong class="text-primary">{{ item.wpm }}</strong></td>
-                        <td><span class="text-danger fw-semibold">{{ item.phonics_errors }}</span></td>
-                        <td>{{ item.skips }}</td>
-                        <td>{{ item.stumbles }}</td>
-                        <td>
-                            <button type="button" 
-                                    class="btn btn-sm btn-outline-primary"
-                                    onclick="showTranscript('{{ item.reference_transcript or 'Passage text not available.' }}', '{{ item.transcript or 'No transcript recorded.' }}')">
-                                View Transcript
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
 
-    {% else %}
-    <div class="alert alert-info text-center p-5 my-4">
-        <h4>No voice assessments found for this student.</h4>
-        <p class="text-muted mb-0">Complete a voice assessment first to view progress analytics.</p>
+        <div class="content-section">
+            <!-- Progress Charts Section -->
+            <div class="section-header mb-3">
+                <h2>Student Performance Trends</h2>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm p-3 h-100">
+                        <h5 class="fw-bold text-dark mb-3">Reading Speed Trend (WPM)</h5>
+                        <div style="position: relative; height: 260px; width: 100%;">
+                            <canvas id="wpmChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm p-3 h-100">
+                        <h5 class="fw-bold text-dark mb-3">Phonics & Reading Errors</h5>
+                        <div style="position: relative; height: 260px; width: 100%;">
+                            <canvas id="errorsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assessment History Table -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold m-0 text-dark">Assessment History</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>RAZ Level</th>
+                                <th>WPM</th>
+                                <th>Phonics Errors</th>
+                                <th>Skips</th>
+                                <th>Stumbles</th>
+                                <th>Transcript</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in assessments | sort(attribute='assessment_date', reverse=True) %}
+                            <tr>
+                                <td>{{ item.assessment_date.strftime('%b %d, %Y %I:%M %p') }}</td>
+                                <td><span class="badge bg-secondary">Level {{ item.raz_level }}</span></td>
+                                <td><strong class="text-primary">{{ item.wpm }}</strong></td>
+                                <td><span class="text-danger fw-semibold">{{ item.phonics_errors }}</span></td>
+                                <td>{{ item.skips }}</td>
+                                <td>{{ item.stumbles }}</td>
+                                <td>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary"
+                                            onclick="showTranscript('{{ item.reference_transcript | replace("'", "\\'") }}', '{{ item.transcript | replace("'", "\\'") }}')">
+                                        View Transcript
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="alert alert-info text-center p-5 my-4">
+            <h4>No voice assessments found for this student.</h4>
+            <p class="text-muted mb-0">Complete a voice assessment first to view progress analytics.</p>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
-</div>
 
 <!-- Native HTML Dialog for Transcript Comparison -->
-<dialog id="transcriptDialog" class="p-4 border-0 rounded shadow-lg" style="max-width: 700px; width: 90%;">
-    <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
-        <h5 class="m-0 fw-bold">Transcript Comparison</h5>
-        <button type="button" class="btn-close" onclick="document.getElementById('transcriptDialog').close()"></button>
+<dialog id="transcriptDialog" style="width: 800px; max-width: 90vw; border: none; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); margin: auto;">
+    
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
+        <h4 style="margin: 0; font-weight: 700; color: #1f2937; font-size: 1.25rem;">Transcript Comparison</h4>
+        <button type="button" onclick="document.getElementById('transcriptDialog').close()" style="background: #f3f4f6; border: none; font-size: 1.2rem; font-weight: bold; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
     </div>
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-light h-100">
-                <h6 class="fw-bold text-primary mb-2">Actual Text</h6>
-                <div id="dialogActualText" class="text-dark small" style="white-space: pre-wrap;"></div>
-            </div>
+
+    <!-- Side-by-Side Comparison Columns -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        
+        <!-- Actual Text Card -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <h6 style="color: #2563eb; font-weight: 700; margin-top: 0; margin-bottom: 8px; font-size: 0.95rem;">Actual Text</h6>
+            <div id="dialogActualText" style="color: #334155; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;"></div>
         </div>
-        <div class="col-md-6">
-            <div class="p-3 border rounded bg-light h-100">
-                <h6 class="fw-bold text-success mb-2">Captured Transcript</h6>
-                <div id="dialogCapturedTranscript" class="text-dark small" style="white-space: pre-wrap;"></div>
-            </div>
+
+        <!-- Captured Transcript Card -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+            <h6 style="color: #16a34a; font-weight: 700; margin-top: 0; margin-bottom: 8px; font-size: 0.95rem;">Captured Transcript</h6>
+            <div id="dialogCapturedTranscript" style="color: #334155; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;"></div>
         </div>
     </div>
-    <div class="text-end mt-3">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('transcriptDialog').close()">Close</button>
+
+    <!-- Footer Close Button -->
+    <div style="text-align: right;">
+        <button type="button" onclick="document.getElementById('transcriptDialog').close()" style="background-color: #2e6b4f; color: white; border: none; padding: 8px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.9rem;">
+            Close
+        </button>
     </div>
 </dialog>
 
-<!-- Chart.js Integration -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    function showTranscript(actual, captured) {
-        document.getElementById('dialogActualText').textContent = actual;
-        document.getElementById('dialogCapturedTranscript').textContent = captured;
-        document.getElementById('transcriptDialog').showModal();
-    }
-
-    {% if assessments %}
-    const labels = [
-        {% for item in assessments %}
-            "{{ item.assessment_date.strftime('%b %d') }}",
-        {% endfor %}
-    ];
-
-    const wpmData = [
-        {% for item in assessments %}
-            parseFloat("{{ item.wpm }}") || 0,
-        {% endfor %}
-    ];
-
-    const errorData = [
-        {% for item in assessments %}
-            parseInt("{{ item.phonics_errors }}") || 0,
-        {% endfor %}
-    ];
-
-    // Render WPM Line Chart
-    new Chart(document.getElementById('wpmChart'), {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Words Per Minute (WPM)',
-                data: wpmData,
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                fill: true,
-                tension: 0.3,
-                pointRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true }
-            }
+    <!-- Chart.js Integration -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function showTranscript(actual, captured) {
+            document.getElementById('dialogActualText').textContent = actual;
+            document.getElementById('dialogCapturedTranscript').textContent = captured;
+            document.getElementById('transcriptDialog').showModal();
         }
-    });
 
-    // Render Phonics Errors Bar Chart
-    new Chart(document.getElementById('errorsChart'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Phonics Errors',
-                data: errorData,
-                backgroundColor: '#dc3545',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true }
+        {% if assessments %}
+        // Sort chronologically (oldest -> newest) for left-to-right trend charts
+        {% set chronological_assessments = assessments | sort(attribute='assessment_date') %}
+
+        const labels = [
+            {% for item in chronological_assessments %}
+                "{{ item.assessment_date.strftime('%b %d') }}",
+            {% endfor %}
+        ];
+
+        const wpmData = [
+            {% for item in chronological_assessments %}
+                parseFloat("{{ item.wpm }}") || 0,
+            {% endfor %}
+        ];
+
+        const errorData = [
+            {% for item in chronological_assessments %}
+                parseInt("{{ item.phonics_errors }}") || 0,
+            {% endfor %}
+        ];
+
+        // 1. Render WPM Line Chart
+        const wpmCtx = document.getElementById('wpmChart').getContext('2d');
+        new Chart(wpmCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Words Per Minute (WPM)',
+                    data: wpmData,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        title: { display: true, text: 'WPM' }
+                    }
+                }
             }
-        }
-    });
-    {% endif %}
-</script>
-{% endblock %}
+        });
+
+        // 2. Render Phonics Errors Bar Chart
+        const errorsCtx = document.getElementById('errorsChart').getContext('2d');
+        new Chart(errorsCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Phonics Errors',
+                    data: errorData,
+                    backgroundColor: '#dc3545',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        title: { display: true, text: 'Error Count' }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
