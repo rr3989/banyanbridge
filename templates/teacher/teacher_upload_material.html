@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Material - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+        {% include 'header.html' %}
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+                <h3>Teacher Panel</h3>
+            </div>
+
+<!-- Assessment Links (Visible only when logged in as a teacher) -->
+        {% if current_user.is_authenticated and current_user.role == 'teacher' %}
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('upload_material') }}" class="active">Upload Material</a></li>
+                <li>
+                <a href="{{ url_for('teacher_voice_assessment') }}">Voice Assessment</a>
+            </li>
+                <li>
+                    <a href="#">Handwriting Assessment</a>
+                <!-- <a href="{{ url_for('teacher_handwriting_assessment') }}"></a>-->
+                </li>
+                <li>
+                    <a href="#">Math Assessment</a>
+                <!--<a href="{{ url_for('teacher_math_assessment') }}"></a>-->
+                </li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        {% endif %}
+        
+        </div>
+
+
+        <div class="main-content">
+            <div class="dashboard-header">
+                <h1>Upload Teaching Material</h1>
+            </div>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+            
+            <div class="form-container">
+                <div class="file-upload-info">
+                    <strong>Upload Guidelines:</strong>
+                    <ul>
+                        <li>Only PDF files are allowed</li>
+                        <li>Maximum file size: 16MB</li>
+                        <li>Ensure your file is properly named</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" action="{{ url_for('upload_material') }}" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="title">Material Title</label>
+                        <input type="text" id="title" name="title" required placeholder="e.g., Chapter 1 - Introduction to Algebra">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input type="text" id="subject" name="subject" required placeholder="e.g., Mathematics">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Brief description of the teaching material..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="file">PDF File</label>
+                        <input type="file" id="file" name="file" accept=".pdf" required>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">Upload Material</button>
+                        <a href="{{ url_for('teacher_dashboard') }}" class="btn-back">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

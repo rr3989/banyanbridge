@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Banyan Bridge Foundation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'header.html' %}
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/images/Banyan-Bridge-final.png') }}" alt="Logo">
+                <h3>Teacher Panel</h3>
+            </div>
+
+<!-- Assessment Links (Visible only when logged in as a teacher) -->
+        {% if current_user.is_authenticated and current_user.role == 'teacher' %}
+            <ul class="sidebar-nav">
+                <li><a href="{{ url_for('teacher_dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('upload_material') }}">Upload Material</a></li>
+                <li>
+                <a href="{{ url_for('teacher_voice_assessment') }}">Voice Assessment</a>
+                </li>
+                <li>
+                    <a href="#">Handwriting Assessment</a>
+                <!-- <a href="{{ url_for('teacher_handwriting_assessment') }}"></a>-->
+                </li>
+                <li>
+                    <a href="#">Math Assessment</a>
+                <!--<a href="{{ url_for('teacher_math_assessment') }}"></a>-->
+                </li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        {% endif %}
+        
+        </div>
+
+        <div class="main-content">
+                <div class="dashboard-header">
+                    <h1>Teacher Dashboard </h1>
+                    <div class="user-info">
+                        <h2><span>Welcome, {{ current_user.full_name }}</span></h2>
+                    </div>
+                    
+                </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Materials</h3>
+                    <div class="number">{{ total_materials }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Voice Assessments</h3>
+                    <div class="number">{{ total_assessments }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Assignments</h3>
+                    <div class="number"> 0 </div>
+                </div>
+            </div>
+
+
+<!-- Recent Voice Assessments Section -->
+    <div class="content-section">
+        <div class="section-header">
+            <h2>Recent Voice Assessments</h2>
+        </div>
+
+
+    {% if assessments %}
+    <div class="table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Student Name</th>
+                    <th>RAZ Level</th>
+                    <th>WPM</th>
+                    <th>Phonics Errors</th>
+                    <th>Skips</th>
+                    <th>Stumbles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in assessments %}
+                <tr>
+                    <td>{{ item.assessment_date.strftime('%b %d, %Y %I:%M %p') if item.assessment_date else 'N/A' }}</td>
+                    <td class="fw-bold">
+                        <a href="{{ url_for('student_progress_report', student_id=item.student_id) }}" 
+                           class="text-decoration-none fw-bold text-primary">
+                            {{ item.student.full_name or item.student.username }}
+                        </a>
+                    </td>
+                    <td><span class="badge bg-success">Level {{ item.raz_level }}</span></td>
+                    <td><strong>{{ item.wpm }}</strong></td>
+                    <td class="text-danger">{{ item.phonics_errors }}</td>
+                    <td class="text-warning">{{ item.skips}}</td>
+                    <td>{{ item.stumbles}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p class="text-muted mb-3">No voice assessments recorded yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+    <div class="content-section">
+        <div class="section-header">
+            <h2>My Teaching Materials</h2>
+        </div>
+
+        {% if materials %}
+        <div class="table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Subject</th>
+                    <th>Description</th>
+                    <th>Uploaded</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for material in materials %}
+                <tr>
+                    <td>{% if material.file_path %}
+                            <a href="{{ url_for('view_material', material_id=material.id) }}" 
+                               target="_blank" 
+                               class="fw-bold text-primary text-decoration-none">
+                                📄 {{ material.title }}
+                            </a>
+                            {% else %}
+                            <span class="fw-bold text-dark">{{ material.title }}</span>
+                            {% endif %}
+                        </td>
+                    <td>{{ material.subject }}</td>
+                    <td>{{ material.description[:50] + '...' if material.description and material.description|length > 50 else (material.description or '-') }}</td>
+                    <td>{{ material.uploaded_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="text-end">
+                            <form action="{{ url_for('delete_material', material_id=material.id) }}" 
+                                  method="POST" 
+                                  class="d-inline"
+                                  onsubmit="return confirm('Are you sure you want to delete this material?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No teaching materials yet</h3>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+
