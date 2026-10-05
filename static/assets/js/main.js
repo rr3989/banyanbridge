@@ -567,7 +567,7 @@ async function analyzeRecording() {
         document.getElementById('phonicsDetail').textContent = data.phonics_error_detail || 'No phonics mismatches were recorded.';
 
         recordingStatus.textContent = data.transcript
-            ? '✅ Transcript captured: ' + data.transcript.slice(0, 120)
+            ? '✅ Transcript captured: ' + data.transcript.slice(0, 5000)
             : '✅ Assessment complete.';
         recordingStatus.classList.remove('recording');
     } catch (error) {

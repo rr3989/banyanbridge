@@ -66,8 +66,7 @@
                     </ul>
                 </div>
                 
-                <form method="POST" action="{{ url_for('upload_material') }}" enctype="multipart/form-data">
-                    <div class="form-group">
+                <form action="{{ url_for('upload_material') }}" method="POST" enctype="multipart/form-data">                    <div class="form-group">
                         <label for="title">Material Title</label>
                         <input type="text" id="title" name="title" required placeholder="e.g., Chapter 1 - Introduction to Algebra">
                     </div>

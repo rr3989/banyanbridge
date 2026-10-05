@@ -5,6 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from functools import wraps
+import mimetypes
+from urllib.parse import quote
+from werkzeug.utils import secure_filename
 import os
 import secrets
 import logging
@@ -13,6 +16,10 @@ import smtplib
 import re
 import shutil
 import subprocess
+import requests
+from urllib.parse import quote
+from werkzeug.utils import secure_filename
+from flask import render_template, request, redirect, url_for, flash
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
@@ -28,14 +35,43 @@ load_dotenv('.env.local', override=True)
 app = Flask(__name__)
 
 secret_key = os.environ.get('SECRET_KEY')
-
 if not secret_key:
     raise RuntimeError(
         "CRITICAL ERROR: 'SECRET_KEY' is missing or empty in .env.local! "
         "Please add SECRET_KEY=<your_key> to .env.local to run the application."
     )
-
 app.config['SECRET_KEY'] = secret_key
+
+BLOB_STORE_ID=os.environ.get('BLOB_STORE_ID')
+BLOB_READ_WRITE_TOKEN = os.environ.get('BLOB_READ_WRITE_TOKEN')
+
+def vercel_blob_put(filename, file_bytes, access='public'):
+    blob_token = os.environ.get('BLOB_READ_WRITE_TOKEN')
+    clean_filename = secure_filename(filename)
+    
+    content_type, _ = mimetypes.guess_type(clean_filename)
+    if not content_type:
+        content_type = 'application/pdf'
+
+    # Pass pathname explicitly as a query parameter
+    endpoint = "https://api.vercel.com/v1/blob"
+    params = {
+        'filename': clean_filename,
+        'addRandomSuffix': 'true'
+    }
+
+    headers = {
+        'authorization': f'Bearer {blob_token.strip()}',
+        'x-access': access,
+        'content-type': content_type
+    }
+
+    response = requests.put(endpoint, params=params, data=file_bytes, headers=headers)
+
+    if response.ok:
+        return response.json().get('url')
+    else:
+        raise RuntimeError(f"Vercel API Error ({response.status_code}): {response.text}")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -935,6 +971,60 @@ def teacher_dashboard():
         total_materials=total_materials
     )
 
+#Below one is storing file in Vercel Blob Storage
+
+@app.route('/teacher/material/upload', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def upload_material():
+    if request.method == 'POST':
+        print("--> Step 1: POST received")
+
+        if 'file' not in request.files:
+            flash('No file part in request.', 'error')
+            return redirect(request.url)
+
+        file = request.files['file']
+
+        if file.filename == '':
+            flash('No file selected.', 'error')
+            return redirect(request.url)
+
+        file.seek(0)
+        file_bytes = file.read()
+        print(f"--> Step 2: File '{file.filename}' read ({len(file_bytes)} bytes)")
+
+        try:
+            # Step 3: Call the defined helper function
+            print("--> Step 3: Executing vercel_blob_put...")
+            blob_url = vercel_blob_put(file.filename, file_bytes, access='public')
+            print(f"--> Step 4: Upload Success! URL = {blob_url}")
+            clean_filename = file.filename
+            print(f"--> Step 5 Clean File Name = {clean_filename}")
+            # Step 4: Save metadata to DB
+            material = TeachingMaterial(
+                title=request.form.get('title'),
+                subject=request.form.get('subject'),
+                description=request.form.get('description'),
+                filename=clean_filename,
+                file_path=blob_url,
+                teacher_id=current_user.id
+            )
+            db.session.add(material)
+            db.session.commit()
+
+            flash('Material uploaded successfully!', 'success')
+            return redirect(url_for('teacher_dashboard'))
+
+        except Exception as e:
+            print(f"--> Upload Error: {str(e)}")
+            flash(f"Upload failed: {str(e)}", 'error')
+            return redirect(request.url)
+
+    return render_template('teacher/teacher_upload_material.html')
+
+#Below one is storing file in local folder drive
+"""
 @app.route('/teacher/material/upload', methods=['GET', 'POST'])
 @login_required
 def upload_material():
@@ -974,6 +1064,7 @@ def upload_material():
             flash('Only PDF files are allowed', 'error')
     
     return render_template('teacher/teacher_upload_material.html')
+"""
 
 # Ensure UPLOAD_FOLDER is configured in your Flask app config
 # app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
@@ -1222,8 +1313,13 @@ def register():
 @login_required
 def logout():
     logout_user()
+    # 1. Clear any leftover unconsumed flash messages from previous routes
+    session.pop('_flashes', None)
+    # 2. Flash only the logout message
     flash('You have been logged out', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
+
+
 
 # Admin Routes
 @app.route('/admin/dashboard')
